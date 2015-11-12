@@ -57,7 +57,7 @@ files <- list.files(pattern="*.txt")
 #a_dframe <- data_to_frame()
 data_list_uv <- list() # a place holder (an empty list obj)
 i = 1 # index for data_list in the following for loop
-for(file in files)
+for(file in files) 
 {
   #
   data_list_uv[[i]] <- data_to_dframe(f=file, 360, 370)
