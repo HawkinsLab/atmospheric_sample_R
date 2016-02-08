@@ -49,27 +49,31 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   # As a result, data_frm has three coloumns: wavelength, absorbance, Timestamp
   
   data_frm <- subset(data_frm, data_frm$wavelength > wl_low & data_frm$wavelength < wl_high)
-  
+
   return(data_frm)
 }
 
 files <- list.files(pattern="*.txt")
 #a_dframe <- data_to_frame()
 data_list_uv <- list() # a place holder (an empty list obj)
+data_list_uv_mean <- list() #am empty list
+#data_list_uv <- lapply(data_to_dframe(f=file, 360, 370), get)
 i = 1 # index for data_list in the following for loop
 for(file in files) 
 {
-  #
+  # this might not be the best way...
   data_list_uv[[i]] <- data_to_dframe(f=file, 360, 370)
+  data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
 }
 data_list_ir <- list() # a place holder (an empty list obj)
+data_list_ir_mean <- list()
 i = 1 # index for data_list in the following for loop
 for(file in files)
 {
-  #
+  # this might not be the best way...
   data_list_ir[[i]] <- data_to_dframe(f=file, 695, 705)
+  data_list_ir_mean[[i]] <- lapply(data_list_ir[[i]],mean)
   i = i + 1
 }
 
-mean()
