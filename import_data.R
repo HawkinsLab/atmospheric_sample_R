@@ -1,8 +1,14 @@
 data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
-  ##  
-  ## In: [file]
-  ## Out: A data Frame containing three coloumns, wavelength, absorbance, and timestamp
-  ## Testing Commit
+  # Process raw data file in CSV format 
+  # Args:
+  #   file: data file name 
+  #   wl_low: lower bound of wavelength
+  #   wl_high: upper bound of wavelength
+  #
+  # Returns: 
+  #   A data Frame containing three coloumns, wavelength, 
+  #    absorbance, and timestamp
+  # 
   
   if(file=='no_input') # in case there's no file name input
     file = file.choose()
