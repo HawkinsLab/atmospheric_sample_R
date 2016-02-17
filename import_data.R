@@ -9,7 +9,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   #   A data Frame containing three coloumns, wavelength, 
   #    absorbance, and timestamp
   # 
-  
+  # Lelia changed this Feb 17 2016
   if(file=='no_input') # in case there's no file name input
     file = file.choose()
   # read the datafile line by line
@@ -26,12 +26,12 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
     nrow=length(fieldList),
     byrow=TRUE)
   # name the columns
-  colnames(data_mat) <- c("wavelength","absorbance")
+  #colnames(data_mat) <- c("wavelength","absorbance")
   # convert a matrix (with colnames) into a frame
-  data_frm <- as.data.frame(data_mat, stringsAsFactors=FALSE)
+  #data_frm <- as.data.frame(data_mat, stringsAsFactors=FALSE)
   # type casting to numeric values
-  data_frm$wavelength <- as.numeric(data_frm$wavelength)
-  data_frm$absorbance <- as.numeric(data_frm$absorbance)
+  #data_frm$wavelength <- as.numeric(data_frm$wavelength)
+  #data_frm$absorbance <- as.numeric(data_frm$absorbance)
   ########################################
   ## Date and time import
   ## result: date_time (date-time object)
@@ -51,25 +51,26 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   ## Adding the timestamp to corresponding obs as a new column
   ## Result: data_frm (a data frame object)
   ########################################
-  data_frm$timestamp <- rep(date_time, nrow(data_frm)) # repeat date_time value
+ # data_frm$timestamp <- rep(date_time, nrow(data_frm)) # repeat date_time value
   # As a result, data_frm has three coloumns: wavelength, absorbance, Timestamp
   
-  data_frm <- subset(data_frm, data_frm$wavelength > wl_low & data_frm$wavelength < wl_high)
+  #data_frm <- subset(data_frm, data_frm$wavelength > wl_low & data_frm$wavelength < wl_high)
+  newlist <- list(data_mat, date_time)
+  return(newlist) #I am trying to deliver a frame with wavelength and absorbance, and also a single time stamp variable per file
 
-  return(data_frm)
 }
 
 files <- list.files(pattern="*.txt")
 #a_dframe <- data_to_frame()
-data_list_uv <- list() # a place holder (an empty list obj)
-data_list_uv_mean <- list() #am empty list
+data_frameAll <- data.frame() # a place holder (an empty data frame obj)
+#data_list_uv_mean <- list() #am empty list
 #data_list_uv <- lapply(data_to_dframe(f=file, 360, 370), get)
 i = 1 # index for data_list in the following for loop
 for(file in files) 
 {
-  # this might not be the best way...
-  data_list_uv[[i]] <- data_to_dframe(f=file, 360, 370)
-  data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
+  # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
+  data_frameAll[i] <- data_to_dframe(f=file) 
+ # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
 }
 data_list_ir <- list() # a place holder (an empty list obj)
