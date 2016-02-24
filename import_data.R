@@ -25,6 +25,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
     unlist(fieldList), 
     nrow=length(fieldList),
     byrow=TRUE)
+  data_mat <- subset(data_mat, data_mat[,1] > wl_low & data_mat[,1] < wl_high)
   # name the columns
   #colnames(data_mat) <- c("wavelength","absorbance")
   # convert a matrix (with colnames) into a frame
