@@ -25,7 +25,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
     unlist(fieldList), 
     nrow=length(fieldList),
     byrow=TRUE)
-  data_mat <- subset(data_mat, data_mat[,1] > wl_low & data_mat[,1] < wl_high)
+ # data_mat <- subset(data_mat, data_mat[,1] > wl_low & data_mat[,1] < wl_high)
   # name the columns
   #colnames(data_mat) <- c("wavelength","absorbance")
   # convert a matrix (with colnames) into a frame
@@ -48,6 +48,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   datetime_obj <- as.Date(datetime_str, "%b%d%Y"); 
   # now merge the date and time into a single POSIXct object
   date_time <- as.POSIXct(paste(datetime_obj, datetime_line[[1]][5]), format="%Y-%m-%d %H:%M:%S")
+  #print(date_time)
   ########################################
   ## Adding the timestamp to corresponding obs as a new column
   ## Result: data_frm (a data frame object)
@@ -56,32 +57,43 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   # As a result, data_frm has three coloumns: wavelength, absorbance, Timestamp
   
   #data_frm <- subset(data_frm, data_frm$wavelength > wl_low & data_frm$wavelength < wl_high)
-  newlist <- list(data_mat, date_time)
-  return(newlist) #I am trying to deliver a frame with wavelength and absorbance, and also a single time stamp variable per file
+  returnlist <- list("wavelength"=data_mat[,1],"absorbance"=data_mat[,2], "timeStamp"= date_time)
+  return(returnlist) #I am trying to deliver a frame with wavelength and absorbance, and also a single time stamp variable per file
 
 }
 
 files <- list.files(pattern="*.txt")
+numFiles <- length(files)
 #a_dframe <- data_to_frame()
-data_frameAll <- data.frame() # a place holder (an empty data frame obj)
+data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
+TimeSeries <- vector(length=numFiles+1)
+
 #data_list_uv_mean <- list() #am empty list
 #data_list_uv <- lapply(data_to_dframe(f=file, 360, 370), get)
 i = 1 # index for data_list in the following for loop
 for(file in files) 
 {
   # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
-  data_frameAll[i] <- data_to_dframe(f=file) 
+  tempList <- data_to_dframe(f=file) 
+ # print(tempList)
+  data_matrixAll[,i+1] <- tempList$absorbance
+  data_matrixAll[,1] <- tempList$wavelength
+  #print(tempList$timestamp)
+  TimeSeries[i+1] <- tempList$timeStamp
  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
 }
-data_list_ir <- list() # a place holder (an empty list obj)
-data_list_ir_mean <- list()
-i = 1 # index for data_list in the following for loop
-for(file in files)
-{
-  # this might not be the best way...
-  data_list_ir[[i]] <- data_to_dframe(f=file, 695, 705)
-  data_list_ir_mean[[i]] <- lapply(data_list_ir[[i]],mean)
-  i = i + 1
-}
+class(TimeSeries) <- c('POSIXt','POSIXct')
+#TimeSeries[1]=0
+print(TimeSeries)
+#data_list_ir <- list() # a place holder (an empty list obj)
+#data_list_ir_mean <- list()
+#i = 1 # index for data_list in the following for loop
+# for(file in files)
+# {
+#   # this might not be the best way...
+#   data_list_ir[[i]] <- data_to_dframe(f=file, 695, 705)
+#   data_list_ir_mean[[i]] <- lapply(data_list_ir[[i]],mean)
+#   i = i + 1
+# }
 
