@@ -55,14 +55,14 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   ########################################
  # data_frm$timestamp <- rep(date_time, nrow(data_frm)) # repeat date_time value
   # As a result, data_frm has three coloumns: wavelength, absorbance, Timestamp
-  
-  #data_frm <- subset(data_frm, data_frm$wavelength > wl_low & data_frm$wavelength < wl_high)
-  returnlist <- list("wavelength"=data_mat[,1],"absorbance"=data_mat[,2], "timeStamp"= date_time)
+
+  #data_frm <- subset(data_frm, data_frm$waclasvelength > wl_low & data_frm$wavelength < wl_high)
+  returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
   return(returnlist) #I am trying to deliver a frame with wavelength and absorbance, and also a single time stamp variable per file
 
 }
 
-files <- list.files(pattern="*.txt")
+files <- list.files(pattern="CESAM_150619*")
 numFiles <- length(files)
 #a_dframe <- data_to_frame()
 data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
@@ -84,8 +84,9 @@ for(file in files)
   i = i + 1
 }
 class(TimeSeries) <- c('POSIXt','POSIXct')
+#data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
-print(TimeSeries)
+#print(TimeSeries)
 #data_list_ir <- list() # a place holder (an empty list obj)
 #data_list_ir_mean <- list()
 #i = 1 # index for data_list in the following for loop
