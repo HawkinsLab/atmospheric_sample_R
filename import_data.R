@@ -62,7 +62,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
 
 }
 
-files <- list.files(pattern="CESAM_150619*")
+files <- list.files(pattern="CESAM_150625*")
 numFiles <- length(files)
 #a_dframe <- data_to_frame()
 data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
@@ -84,6 +84,16 @@ for(file in files)
   i = i + 1
 }
 class(TimeSeries) <- c('POSIXt','POSIXct')
+
+#Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
+BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
+#Now we take the average absorption in some long wavelength reference region, usually 700 nm but recently at CESAM
+#we found that 600 or 550 is better due to fluctuating signal 700
+BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
+
+#We must now subtract the absorbance at the reference wavelength from the BrC wavelength
+BrCcorr <- BrC365-BrCref
+plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
 #print(TimeSeries)
