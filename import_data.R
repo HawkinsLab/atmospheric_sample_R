@@ -96,10 +96,14 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixA
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
-SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
-class(SMPS) = c("POSIXt", "numeric")
-#SMPS <-read.csv("CESAM_SMPSrawtimeseries150625.csv")
 
+#read in particle concentration data
+SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
+
+#try to treat the first column like time, in the same format as TimeSeries, so we can use the approx function
+class(SMPS) = c("POSIXt", "numeric")
+
+#use the approx function to interpolate
 InterSMPS <- approx(SMPS$smpstime, y = SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
