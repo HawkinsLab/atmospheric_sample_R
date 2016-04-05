@@ -63,6 +63,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
 }
 
 ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
+
 files <- list.files(pattern=ExptDay)
 numFiles <- length(files)
 #a_dframe <- data_to_frame()
@@ -95,6 +96,12 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixA
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
+SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
+class(SMPS) = c("POSIXt", "numeric")
+#SMPS <-read.csv("CESAM_SMPSrawtimeseries150625.csv")
+
+InterSMPS <- approx(SMPS$smpstime, y = SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
 #print(TimeSeries)
