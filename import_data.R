@@ -62,7 +62,8 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
 
 }
 
-files <- list.files(pattern="CESAM_150625*")
+ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
+files <- list.files(pattern=ExptDay)
 numFiles <- length(files)
 #a_dframe <- data_to_frame()
 data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
