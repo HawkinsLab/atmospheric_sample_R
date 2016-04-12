@@ -85,7 +85,7 @@ for(file in files)
  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
 }
-class(TimeSeries) <- c('POSIXt','POSIXct')
+class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
 
 #Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
 BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
@@ -94,18 +94,18 @@ BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixA
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
 
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
-BrCcorr <- BrC365-BrCref
+BrCcorr <- BrC365-BrCref #closer to actual signal we want
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
 
 #read in particle concentration data
 SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
 
 #try to treat the first column like time, in the same format as TimeSeries, so we can use the approx function
-class(SMPS) = c("POSIXt", "numeric")
+class(SMPS) <- c("POSIXt", "numeric")
 
 #use the approx function to interpolate
-InterSMPS <- approx(SMPS$smpstime, y = SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
-
+InterSMPS <- approx(SMPS$smpstime, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+CESA
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
 #print(TimeSeries)
