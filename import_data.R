@@ -101,10 +101,10 @@ plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
 SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
 
 #try to treat the first column like time, in the same format as TimeSeries, so we can use the approx function
-class(SMPS) = c("POSIXt", "numeric")
+class(SMPS) <- c("POSIXt", "numeric")
 
 #use the approx function to interpolate
-InterSMPS <- approx(SMPS$smpstime, y = SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+InterSMPS <- approx(SMPS$smpstime, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
