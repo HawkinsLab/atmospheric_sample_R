@@ -85,7 +85,7 @@ for(file in files)
  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
 }
-class(TimeSeries) <- c('POSIXt','POSIXct')
+class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
 
 #Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
 BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
@@ -94,7 +94,7 @@ BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixA
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
 
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
-BrCcorr <- BrC365-BrCref
+BrCcorr <- BrC365-BrCref #closer to actual signal we want
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
 
 #read in particle concentration data
