@@ -97,12 +97,14 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixA
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
 
-#read in particle concentration data
-SMPS <- read.table("CESAM_SMPSrawtimeseries150625.csv", sep=",", header=TRUE)
-
-#try to treat the first column like time, in the same format as TimeSeries, so we can use the approx function
-class(SMPS) <- c("POSIXt", "numeric")
-
+#read in particle concentration data, by allowing user to select the file
+SMPSfile <- file.choose()
+SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
+SMPS$smpstime
+#getting R to recognize the character string of SMPS time and to convert
+#that character string into seconds since R reference time
+SMPS$smpstime <- as.POSIXt(SMPS$smpstime, format="%-m/%d/%y %-H:%M")
+SMPS$smpstime
 #use the approx function to interpolate
 InterSMPS <- approx(SMPS$smpstime, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
