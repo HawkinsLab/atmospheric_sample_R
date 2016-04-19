@@ -95,19 +95,27 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixA
 
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
-plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1])
+
 
 #read in particle concentration data, by allowing user to select the file
 SMPSfile <- file.choose()
 SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
-SMPS$smpstime
+
 #getting R to recognize the character string of SMPS time and to convert
 #that character string into seconds since R reference time
-SMPS$smpstime <- as.POSIXt(SMPS$smpstime, format="%-m/%d/%y %-H:%M")
-SMPS$smpstime
-#use the approx function to interpolate
-InterSMPS <- approx(SMPS$smpstime, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+#It does not appear to matter if the month is in one or two digit format. The same is true
+#for time
+SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%y %H:%M")
 
+#use the approx function to interpolate
+InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+
+#Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
+#some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
+#due to fluctuations at 700 for unknown reasons)
+MAC <- BrCcorr/InterSMPS$y
+plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1], col="red", type = "l")
+plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l",ylim = c(0,0.02))
 #data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
 #TimeSeries[1]=0
 #print(TimeSeries)
