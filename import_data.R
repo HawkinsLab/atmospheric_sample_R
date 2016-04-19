@@ -105,7 +105,7 @@ SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
 #that character string into seconds since R reference time
 #It does not appear to matter if the month is in one or two digit format. The same is true
 #for time
-SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%y %H:%M")
+SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
 
 #use the approx function to interpolate
 InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
