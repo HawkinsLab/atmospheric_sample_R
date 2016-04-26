@@ -1,5 +1,5 @@
 data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
-  # Process raw data file in CSV format 
+  # Process raw data file in tab delimited format 
   # Args:
   #   file: data file name 
   #   wl_low: lower bound of wavelength
@@ -9,7 +9,9 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   #   A data Frame containing three coloumns, wavelength, 
   #    absorbance, and timestamp
   # 
-  # Lelia changed this Feb 17 2016
+  #######################
+  ## Opening the individual text files, getting wavelength and absorbance but not date
+  ###########################
   if(file=='no_input') # in case there's no file name input
     file = file.choose()
   # read the datafile line by line
@@ -25,14 +27,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
     unlist(fieldList), 
     nrow=length(fieldList),
     byrow=TRUE)
- # data_mat <- subset(data_mat, data_mat[,1] > wl_low & data_mat[,1] < wl_high)
-  # name the columns
-  #colnames(data_mat) <- c("wavelength","absorbance")
-  # convert a matrix (with colnames) into a frame
-  #data_frm <- as.data.frame(data_mat, stringsAsFactors=FALSE)
-  # type casting to numeric values
-  #data_frm$wavelength <- as.numeric(data_frm$wavelength)
-  #data_frm$absorbance <- as.numeric(data_frm$absorbance)
+ 
   ########################################
   ## Date and time import
   ## result: date_time (date-time object)
@@ -48,39 +43,45 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   datetime_obj <- as.Date(datetime_str, "%b%d%Y"); 
   # now merge the date and time into a single POSIXct object
   date_time <- as.POSIXct(paste(datetime_obj, datetime_line[[1]][5]), format="%Y-%m-%d %H:%M:%S")
-  #print(date_time)
+  
   ########################################
-  ## Adding the timestamp to corresponding obs as a new column
+  ## Adding the timestamp to list to return in function
   ## Result: data_frm (a data frame object)
   ########################################
- # data_frm$timestamp <- rep(date_time, nrow(data_frm)) # repeat date_time value
-  # As a result, data_frm has three coloumns: wavelength, absorbance, Timestamp
+ 
+  # As a result, list has three items: wavelength, absorbance, Timestamp
 
-  #data_frm <- subset(data_frm, data_frm$waclasvelength > wl_low & data_frm$wavelength < wl_high)
+  
   returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
-  return(returnlist) #I am trying to deliver a frame with wavelength and absorbance, and also a single time stamp variable per file
+  return(returnlist) 
 
 }
 
-ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
 
-files <- list.files(pattern=ExptDay)
+
+ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
+SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for spectra files")
+files <- list.files(path=SpectraFolder, pattern=ExptDay, full.names=TRUE)
+
 numFiles <- length(files)
-#a_dframe <- data_to_frame()
+
+#Before this lines runs, we need to get the nrow for our spectra rather than hard code it
+#then we can use the wavelength range cutoffs. To do this, we need only read in the first column 
+#wavelength, not spectra.
+
 data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
 TimeSeries <- vector(length=numFiles+1)
 
-#data_list_uv_mean <- list() #am empty list
-#data_list_uv <- lapply(data_to_dframe(f=file, 360, 370), get)
+
 i = 1 # index for data_list in the following for loop
 for(file in files) 
 {
   # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
   tempList <- data_to_dframe(f=file) 
- # print(tempList)
+
   data_matrixAll[,i+1] <- tempList$absorbance
   data_matrixAll[,1] <- tempList$wavelength
-  #print(tempList$timestamp)
+  
   TimeSeries[i+1] <- tempList$timeStamp
  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i = i + 1
@@ -96,37 +97,27 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixA
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
+#############################
+## Now we begin using SMPS data to normalize absorbance. We read the file in, format time
+#########################
 
 #read in particle concentration data, by allowing user to select the file
 SMPSfile <- file.choose()
 SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
 
-#getting R to recognize the character string of SMPS time and to convert
-#that character string into seconds since R reference time
-#It does not appear to matter if the month is in one or two digit format. The same is true
-#for time
 SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
 
 #use the approx function to interpolate
 InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
+#####################
 #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
 #some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
 #due to fluctuations at 700 for unknown reasons)
+########################
+
 MAC <- BrCcorr/InterSMPS$y
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1], col="red", type = "l")
 plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l",ylim = c(0,0.02))
-#data_matrixAll <- as.numeric(data_matrixAll) #turns the data matrix from characters into numeric data so we can do maths
-#TimeSeries[1]=0
-#print(TimeSeries)
-#data_list_ir <- list() # a place holder (an empty list obj)
-#data_list_ir_mean <- list()
-#i = 1 # index for data_list in the following for loop
-# for(file in files)
-# {
-#   # this might not be the best way...
-#   data_list_ir[[i]] <- data_to_dframe(f=file, 695, 705)
-#   data_list_ir_mean[[i]] <- lapply(data_list_ir[[i]],mean)
-#   i = i + 1
-# }
+
 
