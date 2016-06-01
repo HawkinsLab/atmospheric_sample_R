@@ -63,8 +63,9 @@ ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
 
 require(tcltk)
 SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for absorbance spectra files")
-files <- list.files(path=SpectraFolder, pattern=ExptDay, full.names=TRUE)
 
+# Get the names of the data files including the full path
+files <- list.files(path=SpectraFolder, pattern=ExptDay, full.names=TRUE) # see full.names=TRUE
 numFiles <- length(files)
 
 #Before this lines runs, we need to get the nrow for our spectra rather than hard code it
