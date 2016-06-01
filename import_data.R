@@ -77,7 +77,7 @@ numRows <- 3648
 data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1) # a place holder (an empty data frame obj), 
 TimeSeries <- vector(length=numFiles+1)
 
-i = 1 # index for data_list in the following for loop
+i <- 1 # index for data_list in the following for loop
 for(file in files) 
 {
   # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
@@ -88,7 +88,7 @@ for(file in files)
   
   TimeSeries[i+1] <- tempList$timeStamp
  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
-  i = i + 1
+  i <- i + 1
 }
 class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
 
