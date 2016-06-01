@@ -60,6 +60,7 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
 
 
 ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
+require(tcltk)
 SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for spectra files")
 files <- list.files(path=SpectraFolder, pattern=ExptDay, full.names=TRUE)
 
@@ -68,8 +69,11 @@ numFiles <- length(files)
 #Before this lines runs, we need to get the nrow for our spectra rather than hard code it
 #then we can use the wavelength range cutoffs. To do this, we need only read in the first column 
 #wavelength, not spectra.
-
-data_matrixAll <- matrix(NA,nrow=3648,ncol=numFiles+1) # a place holder (an empty data frame obj), 
+#require("R.utils")
+#nheaders <- 17 # 17 lines of header
+#numRows <- countLines(files[1]) - nheaders
+numRows <- 3648
+data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1) # a place holder (an empty data frame obj), 
 TimeSeries <- vector(length=numFiles+1)
 
 
@@ -110,6 +114,9 @@ SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
 #use the approx function to interpolate
 InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
+# To workaround the "Error in plot.new() : figure margins too large
+# par(mar=c(1,1,1,1))
+
 #####################
 #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
 #some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
@@ -120,4 +127,4 @@ MAC <- BrCcorr/InterSMPS$y
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1], col="red", type = "l")
 plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l",ylim = c(0,0.02))
 
-
+# save the graph data points to a file
