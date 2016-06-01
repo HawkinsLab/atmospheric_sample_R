@@ -14,6 +14,7 @@ Strobe/Lamp Enabled: No (USB4H08886)
 Correct for Detector Non-linearity: Yes (USB4H08886)
 Correct for Stray Light: Yes (USB4H08886)
 Number of Pixels in Processed Spectrum: 3648
+This is Elyse's change.
 >>>>>Begin Processed Spectral Data<<<<<
 178.14	-0.000
 178.36	-0.000
