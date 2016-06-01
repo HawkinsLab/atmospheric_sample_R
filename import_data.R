@@ -60,8 +60,9 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
 
 
 ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")
+
 require(tcltk)
-SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for spectra files")
+SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for absorbance spectra files")
 files <- list.files(path=SpectraFolder, pattern=ExptDay, full.names=TRUE)
 
 numFiles <- length(files)
@@ -106,7 +107,7 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 #########################
 
 #read in particle concentration data, by allowing user to select the file
-SMPSfile <- file.choose()
+SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
 SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
 
 SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
@@ -125,6 +126,8 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 
 MAC <- BrCcorr/InterSMPS$y
 plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1], col="red", type = "l")
-plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l",ylim = c(0,0.02))
+plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l",ylim = c(0,0.005))
+
+
 
 # save the graph data points to a file
