@@ -1,3 +1,5 @@
+#I am writing a comment -Jason
+
 file = file.choose()
 # read the datafile line by line
 txt <- readLines(file) 
