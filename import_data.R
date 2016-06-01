@@ -1,4 +1,4 @@
-data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
+data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Process raw data file in tab delimited format 
   # Args:
   #   file: data file name 
@@ -6,13 +6,12 @@ data_to_dframe <- function(file='no_input', wl_low=170, wl_high=900) {
   #   wl_high: upper bound of wavelength
   #
   # Returns: 
-  #   A data Frame containing three coloumns, wavelength, 
-  #    absorbance, and timestamp
+  #   A list containing three items, wavelength, absorbance, and timestamp
   # 
   #######################
   ## Opening the individual text files, getting wavelength and absorbance but not date
   ###########################
-  if(file=='no_input') # in case there's no file name input
+  if(missing(file)) # in case there's no file name input
     file = file.choose()
   # read the datafile line by line
   txt <- readLines(file) 
@@ -77,7 +76,6 @@ numFiles <- length(files)
 numRows <- 3648
 data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1) # a place holder (an empty data frame obj), 
 TimeSeries <- vector(length=numFiles+1)
-
 
 i = 1 # index for data_list in the following for loop
 for(file in files) 
