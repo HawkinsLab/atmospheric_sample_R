@@ -11,8 +11,7 @@ Spectra Averaged: 5 (USB4H08886)
 Boxcar Smoothing: 5 (USB4H08886)
 Correct for Electrical Dark: Yes (USB4H08886)
 Strobe/Lamp Enabled: No (USB4H08886)
-Correct for Detector Non-linearity: Yes (USB4H08886)
-Correct for Stray Light: Yes (USB4H08886)
+Correct for Detector Non-lineahfjfj
 Number of Pixels in Processedkfhn<<<<<
 178.14	-0.000
 178.36	-0.000
