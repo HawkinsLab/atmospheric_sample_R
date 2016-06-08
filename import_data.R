@@ -11,6 +11,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   #######################
   ## Opening the individual text files, getting wavelength and absorbance but not date
   ###########################
+  #browser()
   if(missing(file)) # in case there's no file name input
     file = file.choose()
   # read the datafile line by line
@@ -23,7 +24,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   fieldList <- strsplit(data_str, split = "\t")
   # create a matrix 
   data_mat <- matrix(
-    unlist(fieldList), 
+    unlist(fieldList), # change a list to a vector
     nrow=length(fieldList),
     byrow=TRUE)
  
@@ -48,7 +49,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   ## Result: data_frm (a data frame object)
   ########################################
  
-  # As a result, list has three items: wavelength, absorbance, Timestamp
+  # As a result, returnlist has three items: wavelength, absorbance, Timestamp
 
   
   returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
