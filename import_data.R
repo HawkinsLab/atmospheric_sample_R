@@ -64,6 +64,7 @@ SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spec
 #ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")  # removed pattern requirement from list files function
 
 require(tcltk)
+library(tcltk)
 SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for absorbance spectra files")
 
 # Get the names of the data files including the full path
@@ -102,8 +103,13 @@ BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixA
 #we found that 600 or 550 is better due to fluctuating signal 700
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
 
+BrCref2 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 495 & data_matrixAll[,1] < 505))
+
+
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
+
+BrCcorr <- BrC365-BrCref2 #closer to actual signal we want
 
 #############################
 ## Now we begin using SMPS data to normalize absorbance. We read the file in, format time
@@ -226,6 +232,7 @@ if (SMPS_check == "yes"){
 #plot(TimeSeries[2:numFiles+1],BrCcorr[2:numFiles+1], col="red", type = "l")
 #plot(TimeSeries[2:numFiles+1], MAC[2:numFiles+1], col="green", type = "l", ylim = c(0,0.005))
 
+
 #################
 ## Plot of MAC over time with ion counts included
 ## File is PTR Corr Series file 
@@ -233,64 +240,69 @@ if (SMPS_check == "yes"){
 #require("reshape2")
 library("reshape2")
   
-  
   ## read in PTR Corr Series file, must be tab-demilited
-  PTR_Series <- tk_choose.files(default="",caption="Select a tab-delimited PTR Corr Series file")
-  PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
+PTR_Series <- tk_choose.files(default="",caption="Select a tab-delimited PTR Corr Series file")
+PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
   
   # format time to POSIXct
-  PTR_timeFormatted <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")
-  #PTR_timeFormatted <- as.POSIXct(PTR$Time, format="%m/%d/%Y %H:%M")
+PTR_timeFormatted <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")
+#PTR_timeFormatted <- as.POSIXct(PTR$Time, format="%H:%M")   ## might need to change format depending on txt file
   
   # create data frame with time, MA, MG, Imine
-  PTR.df <- data.frame(PTR_timeFormatted, PTR$MA, PTR$MG, PTR$Imine)
+PTR.df <- data.frame(PTR_timeFormatted, PTR$MA, PTR$MG, PTR$Imine)
   
   # create vector of MAC data, along with data frame of MAC data with Time Series
-  MAC_data <- MAC[2:numFiles+1]
-  MAC.df <- data.frame(Time, MAC_data)
+MAC_data <- MAC[2:numFiles+1]
+MAC.df <- data.frame(Time, MAC_data)
+ 
+################
+# ggplot version
+################
+
+library(ggplot2)
+library(gtable)
+library(grid)
   
-  library(ggplot2)
-  library(gtable)
-  library(grid)
-  
-  grid.newpage()
+  # clear plot
+grid.newpage()
   
   ## create ggplot for MAC versus time and for PTR data versus time 
-  p1 <- ggplot(MAC.df, aes(Time, MAC_data)) + geom_line(colour = "black") + theme_bw() + ylab("MAC")
-  p2 <- ggplot() +
-    geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.MA, colour="red")) +   
-    geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.MG, colour="blue")) + 
-    geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.Imine, colour = "green")) +
-    theme_bw()  +  
-    theme(panel.background = element_rect(fill = NA)) +
-    ylab("Ion count")
+p1 <- ggplot(MAC.df, aes(Time, MAC_data)) + geom_line(colour = "black") + theme_bw() + ylab("MAC")
+p2 <- ggplot() +
+  geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.MA, colour="red")) +   
+  geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.MG, colour="blue")) + 
+  geom_line(data = PTR.df, aes(x = PTR_timeFormatted, y = PTR.Imine, colour = "green")) +
+  theme_bw()  +  
+  theme(panel.background = element_rect(fill = NA)) +
+  ylab("Ion count")
   
 
   # extract gtable  
-  g1 <- ggplot_gtable(ggplot_build(p1))
-  g2 <- ggplot_gtable(ggplot_build(p2))
+g1 <- ggplot_gtable(ggplot_build(p1))
+g2 <- ggplot_gtable(ggplot_build(p2))
   
   # overlap the panel of 2nd plot on that of 1st plot
-  pp <- c(subset(g1$layout, name == "panel", se = t:r))
-  g <- gtable_add_grob(g1, g2$grobs[[which(g2$layout$name == "panel")]], pp$t, pp$l, pp$b, pp$l)
+pp <- c(subset(g1$layout, name == "panel", se = t:r))
+g <- gtable_add_grob(g1, g2$grobs[[which(g2$layout$name == "panel")]], pp$t, pp$l, pp$b, pp$l)
   
   # formatting for right axis
-  ia <- which(g2$layout$name == "axis-l")
-  ga <- g2$grobs[[ia]]
-  ax <- ga$children[[2]]
-  ax$widths <- rev(ax$widths)  
-  ax$grobs <- rev(ax$grobs)     
+ia <- which(g2$layout$name == "axis-l")
+ga <- g2$grobs[[ia]]
+ax <- ga$children[[2]]
+ax$widths <- rev(ax$widths)  
+ax$grobs <- rev(ax$grobs)     
   
-  g <- gtable_add_cols(g, g2$widths[g2$layout[ia, ]$l], length(g$widths) - 1) # add columns to right axis
-  g <- gtable_add_grob(g, ax, pp$t, length(g$widths) - 1, pp$b)
-  g <- gtable_add_grob(g, g2$grob[[7]], pp$t, length(g$widths), pp$b)
+g <- gtable_add_cols(g, g2$widths[g2$layout[ia, ]$l], length(g$widths) - 1) # add columns to right axis
+g <- gtable_add_grob(g, ax, pp$t, length(g$widths) - 1, pp$b)
+g <- gtable_add_grob(g, g2$grob[[7]], pp$t, length(g$widths), pp$b)
   
   # draw it
-  grid.draw(g) 
+grid.draw(g) 
 
   
   # set margins to fit both y-axis
 par(mar = c(4,6,4,6))
+layout(mat=1)
   # plot MAC versus time, add in y-axis label after
 with(MAC.df, plot(Time, MAC_data, type="l", col="black", xlab="Time", ylab=NA))
 mtext("MAC", line=3, las=2, side=2)
