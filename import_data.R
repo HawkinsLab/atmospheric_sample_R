@@ -1,4 +1,13 @@
 
+########
+# In order to decide which plots you would like to see , set these variables
+# to either yes or on before runnning the file.
+######## 
+
+ PTR_plot <- "no"
+ rainbow_plot <- "no"
+ corrected_rainbow_plot <- "no"
+
 data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Process raw data file in tab delimited format 
   # Args:
@@ -9,7 +18,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Returns: 
   #   A list containing three items, wavelength, absorbance, and timestamp
   # 
-  #Lelia test commit 6/1/2016
+  #  Lelia test commit 6/1/2016
   #######################
   ## Opening the individual text files, getting wavelength and absorbance but not date
   ###########################
@@ -137,19 +146,21 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 ## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
 #SMPS <- read.csv(SMPS_testFile, head=FALSE, sep=",", col.names = paste0(seq_len(136)), fill=TRUE)
 
-# check if line 15 column 2 is "dw/dlogDp"
-#if (SMPS$X2[15]=="dw/dlogDp"){
-# num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
-  #SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
-#  SMPS <- SMPS[num,]  
-#} 
-
 ## create a date frame with date, time, and total smps concentration
 #SMPS_conc <- SMPS$X136    # total concentration
 #SMPS_datetime<- as.POSIXct(paste(SMPS$X2, SMPS$X3), format="%m/%d/%y %H:%M")
 #SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
 
-#InterSMPS <- approx(SMPS_datetime, SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+# check if line 15 column 2 is "dw/dlogDp"
+#if (SMPS$X2[15]=="dw/dlogDp"){
+#  num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
+#  SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
+  #SMPS <- SMPS[num,]  
+#} 
+
+##SMPS_conc_test <- as.numeric(SMPS.df$SMPS_conc)
+##SMPS_conc_2 <- sapply(SMPS.df$SMPS_conc, as.numeric)
+#InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
 ##################################
 # NOTE
@@ -162,7 +173,9 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 #due to fluctuations at 700 for unknown reasons)
 ########################
 
-MAC <- BrCcorr/InterSMPS$y
+MAC <- (BrCcorr*1329787)/InterSMPS$y  
+# obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
+
 } # end of SMPS calculations 
 
 ############
@@ -218,6 +231,8 @@ if (SMPS_check == "yes"){
   print(qplot2)
 } 
 
+
+
 #######################
 ## plots for BrCcorr and MAC at reference time 
 ########################
@@ -245,6 +260,7 @@ if (SMPS_check == "yes"){
 ## File is PTR Corr Series file 
 #################
 
+if (PTR_plot=="yes") {
 if (SMPS_check == "yes"){
   
 require("reshape2")
@@ -303,7 +319,7 @@ mtext(getDate, side=3, line=2)
 
 par(new=F)
 
-} # end of SMPS check for PTR plots
+}} # end of check for PTR plots
 
 #################
 ## Absorbance versus wavelength for each time 
@@ -312,6 +328,7 @@ par(new=F)
 ## For each time, we subtract the BrCref value from all absorbace measurements 
 #################
 
+if (rainbow_plot == "yes"){
 # create new time vector of just times, but keeping the first time stamp
 # first time stamp is place holder 
 justTime <- strftime(TimeSeries, format = "%H:%M:%S")
@@ -352,6 +369,7 @@ image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[lengt
            legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
 # add date to the plot
 mtext(getDate, side=3) 
+} ## end of check for rainbow plot
 
 ##########
 # In order to eliminate some of the noise, we remove any measurement with a 
@@ -360,6 +378,8 @@ mtext(getDate, side=3)
 # We assign each time stamp a 0/1. A 1 is given to times vectors that are removed.
 #########
 
+
+if (corrected_rainbow_plot == "yes"){
 # Number of columns to loop through
 num_cols <- ncol(matrix_noBrC)
 
@@ -420,10 +440,9 @@ matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.
 image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
            legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
 # add date to the plot
-mtext(getDate, side=3, line=2) 
+mtext(getDate, side=1) 
 
-
-
+} # end of check for corrected_rainbow_plot
 
 
 
