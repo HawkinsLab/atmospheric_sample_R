@@ -249,6 +249,7 @@ if (SMPS_check == "yes"){
   
 require("reshape2")
 library("reshape2")
+library("fields")
   
 # read in PTR Corr Series file, must be tab-demilited
 PTR_Series <- tk_choose.files(default="",caption="Select a tab-delimited PTR Corr Series file")
@@ -256,8 +257,8 @@ PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
   
 # format time to POSIXct
 # Note: PTR files have different formatting  
-#PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
-PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
+PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
+#PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
   
 # create data frame with time, MA, MG, Imine
 PTR.df <- data.frame(PTR_time, PTR$MA, PTR$MG, PTR$Imine)
@@ -337,11 +338,6 @@ Time_asHours <- sapply(strsplit(justTime,":"),
                          x <- as.numeric(x)
                          ((x[1]+x[2]/60) + (x[3]/3600)) })
 
-# layout to fit both plot & color bar legend
-layout(t(1:2), widths=c(8,1))
-# set new plot
-grid.newpage()
-
 # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
 my.palette <- rainbow(length(justTime), start=0, end=4/6)
 
@@ -355,7 +351,7 @@ matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,700), ylim=c(-
 image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
            legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
 # add date to the plot
-mtext(getDate, side=3, line=2) 
+mtext(getDate, side=3) 
 
 ##########
 # In order to eliminate some of the noise, we remove any measurement with a 
@@ -381,7 +377,7 @@ for (i in 2:num_cols){
   # vector with every time stamp
   times[i] <- colnames(matrix_noBrC)[i]  
   
-  if (sd(matrix_noBrC[1450:1700,i]) > 0.05){
+  if (sd(matrix_noBrC[1450:1700,i]) > 0.005){   # will likely need to adjust this value
     # remove column with value i from matrix
     matrix_corr <- matrix_corr[,-i]    
     # assign 1 to removed time
@@ -397,17 +393,21 @@ for (i in 2:num_cols){
 # Create a data frame with time vector and 0/1 vector
 binTimes <- data.frame(times, removed)
 # Plot to determine if there is a pattern to which times are removed
-plot(binTimes$times, binTimes$removed)
+grid.newpage()
+par(mar= c(5, 4, 4, 2))
+plot(binTimes$times, binTimes$removed, xlab="Time", yaxt="n") # no y-axis
+axis(2, at = seq(0, 1, by = 1), las=2)                        # add y-axis
 
 # add wavelength vector to corrected matrix
 matrix_corr <- cbind(matrix_noBrC[,1], matrix_corr)
 
 
 #### Plots new matrix with same parameters as above 
-# layout to fit both plot & color bar legend
-layout(t(1:2), widths=c(8,1))
 # set new plot
 grid.newpage()
+
+# layout to fit both plot & color bar legend
+layout(t(1:2), widths=c(10,2))
 
 # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
 my.palette <- rainbow(length(justTime), start=0, end=4/6)
