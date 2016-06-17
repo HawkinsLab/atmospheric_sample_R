@@ -147,7 +147,7 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 #SMPS <- read.csv(SMPS_testFile, head=FALSE, sep=",", col.names = paste0(seq_len(136)), fill=TRUE)
 
 ## create a date frame with date, time, and total smps concentration
-#SMPS_conc <- SMPS$X136    # total concentration
+#SMPS_conc <- as.numeric(as.character(SMPS$X136 ))    # total concentration, need to convert to class form 
 #SMPS_datetime<- as.POSIXct(paste(SMPS$X2, SMPS$X3), format="%m/%d/%y %H:%M")
 #SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
 
@@ -155,11 +155,8 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 #if (SMPS$X2[15]=="dw/dlogDp"){
 #  num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
 #  SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
-  #SMPS <- SMPS[num,]  
 #} 
 
-##SMPS_conc_test <- as.numeric(SMPS.df$SMPS_conc)
-##SMPS_conc_2 <- sapply(SMPS.df$SMPS_conc, as.numeric)
 #InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
 ##################################
