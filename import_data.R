@@ -229,7 +229,6 @@ if (SMPS_check == "yes"){
 } 
 
 
-
 #######################
 ## plots for BrCcorr and MAC at reference time 
 ########################
@@ -270,8 +269,8 @@ PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
   
 # format time to POSIXct
 # Note: PTR files have different formatting  
-PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
-#PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
+#PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
+PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
   
 # create data frame with time, MA, MG, Imine
 PTR.df <- data.frame(PTR_time, PTR$MA, PTR$MG, PTR$Imine)
@@ -324,6 +323,10 @@ par(new=F)
 ## We create a matrix with the same dimensions as data_matrixAll 
 ## For each time, we subtract the BrCref value from all absorbace measurements 
 #################
+library("fields")
+library("maps")
+library("spam")
+
 
 if (rainbow_plot == "yes"){
 # create new time vector of just times, but keeping the first time stamp
@@ -351,6 +354,11 @@ Time_asHours <- sapply(strsplit(justTime,":"),
                        function(x) {
                          x <- as.numeric(x)
                          ((x[1]+x[2]/60) + (x[3]/3600)) })
+# set new plot
+grid.newpage()
+
+# layout to fit both plot & color bar legend
+layout(t(1:2), widths=c(10,2))
 
 # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
 my.palette <- rainbow(length(justTime), start=0, end=4/6)
