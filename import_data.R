@@ -53,7 +53,6 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
  
   # As a result, returnlist has three items: wavelength, absorbance, Timestamp
 
-  
   returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
   return(returnlist) 
 
