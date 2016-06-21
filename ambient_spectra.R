@@ -1,5 +1,5 @@
 source("data_to_list.R")
-
+#source("data_to_dframe.R")
 ## ask user if they have SMPS data, if 'no' plot MAC, if 'yes' plot both BrCcorr & MAC
 SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? Enter yes/no:")
 
@@ -16,10 +16,10 @@ numFiles <- length(files)
 #Before this lines runs, we need to get the nrow for our spectra rather than hard code it
 #then we can use the wavelength range cutoffs. To do this, we need only read in the first column 
 #wavelength, not spectra.
-#require("R.utils")
-#nheaders <- 17 # 17 lines of header
-#numRows <- countLines(files[1]) - nheaders
-numRows <- 3648
+require("R.utils")
+nheaders <- 17 # 17 lines of header
+numRows <- countLines(files[1]) - (nheaders + 1) 
+#numRows <- 3608
 data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1) # a place holder (an empty data frame obj), 
 TimeSeries <- vector(length=numFiles+1)
 

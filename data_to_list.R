@@ -1,4 +1,4 @@
-data_to_list <- function(file, wl_low=170, wl_high=900) {
+data_to_list <- function(file, wl_low=195, wl_high=907) {
   # Process raw data file in tab delimited format 
   # Args:
   #   file: data file name 
