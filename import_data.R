@@ -1,12 +1,12 @@
-
 ########
 # In order to decide which plots you would like to see , set these variables
 # to either yes or on before runnning the file.
 ######## 
 
- PTR_plot <- "no"
- rainbow_plot <- "no"
- corrected_rainbow_plot <- "no"
+PTR_plot <- "no"
+rainbow_plot <- "no"
+corrected_rainbow_plot <- "no"
+log_log_plot <- "no"
 
 data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Process raw data file in tab delimited format 
@@ -22,6 +22,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   #######################
   ## Opening the individual text files, getting wavelength and absorbance but not date
   ###########################
+  #browser()
   if(missing(file)) # in case there's no file name input
     file = file.choose()
   # read the datafile line by line
@@ -34,10 +35,10 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   fieldList <- strsplit(data_str, split = "\t")
   # create a matrix 
   data_mat <- matrix(
-    unlist(fieldList), 
+    unlist(fieldList), # change a list to a vector
     nrow=length(fieldList),
     byrow=TRUE)
- 
+  
   ########################################
   ## Date and time import
   ## result: date_time (date-time object)
@@ -58,13 +59,12 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   ## Adding the timestamp to list to return in function
   ## Result: data_frm (a data frame object)
   ########################################
- 
-  # As a result, list has three items: wavelength, absorbance, Timestamp
-
+  
+  # As a result, returnlist has three items: wavelength, absorbance, Timestamp
   
   returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
   return(returnlist) 
-
+  
 }
 
 #ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")  # removed pattern requirement from list files function
@@ -94,14 +94,15 @@ for(file in files)
 {
   # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
   tempList <- data_to_dframe(f=file) 
-
+  
   data_matrixAll[,i+1] <- tempList$absorbance
   data_matrixAll[,1] <- tempList$wavelength
   
   TimeSeries[i+1] <- tempList$timeStamp
- # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
+  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
   i <- i + 1
 }
+
 class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
 
 #Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
@@ -112,7 +113,8 @@ BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixA
 
 #BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 545 & data_matrixAll[,1] < 555))
- 
+
+
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
@@ -122,52 +124,55 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 ## We read the file in and format time.
 #########################
 
-SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? Enter yes/no:")
+SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n:")
 
-if (SMPS_check == "yes"){
+if (SMPS_check == "y"){
   
-#read in particle concentration data, by allowing user to select the file
-SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
-SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
-
-SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
-
-#use the approx function to interpolate
-InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
-
-####################################
-### This commented out section can be used to read in raw SMPS csv file
-
-# Allow user to select csv file with raw SMPS data
-#SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
-
-## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
-#SMPS <- read.csv(SMPS_testFile, head=FALSE, sep=",", col.names = paste0(seq_len(136)), fill=TRUE)
-
-## create a date frame with date, time, and total smps concentration
-#SMPS_conc <- as.numeric(as.character(SMPS$X136 ))    # total concentration, need to convert to class form 
-#SMPS_datetime<- as.POSIXct(paste(SMPS$X2, SMPS$X3), format="%m/%d/%y %H:%M")
-#SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
-
-# check if line 15 column 2 is "dw/dlogDp"
-#if (SMPS$X2[15]=="dw/dlogDp"){
-#  num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
-#  SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
-#} 
-
-#InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
-
-##################################
-
-#####################
-#Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
-#some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
-#due to fluctuations at 700 for unknown reasons)
-########################
-
-MAC <- (BrCcorr*1329787)/InterSMPS$y  
-# obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
-
+  #read in particle concentration data, by allowing user to select the file
+  SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
+  SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
+  
+  SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
+  
+  #use the approx function to interpolate
+  InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+  
+  ####################################
+  ### This commented out section can be used to read in raw SMPS csv file
+  
+  # Allow user to select csv file with raw SMPS data
+  # SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
+  
+  ## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
+  # SMPS <- read.csv(SMPS_testFile, head=FALSE, sep=",", col.names = paste0(seq_len(136)), fill=TRUE)
+  
+  ## create a date frame with date, time, and total smps concentration
+  # SMPS_conc <- as.numeric(as.character(SMPS$X136 ))    # total concentration, need to convert to class form 
+  # SMPS_datetime<- as.POSIXct(paste(SMPS$X2, SMPS$X3), format="%m/%d/%y %H:%M")
+  # SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
+  
+  ## check if line 15 column 2 is "dw/dlogDp"
+  # if (SMPS$X2[15]=="dw/dlogDp"){
+  #  num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
+  #  SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
+  # } 
+  
+  # InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+  
+  ##################################
+  # NOTE
+  # To workaround the "Error in plot.new() : figure margins too large
+  # par(mar=c(1,1,1,1))
+  
+  #####################
+  #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
+  #some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
+  #due to fluctuations at 700 for unknown reasons)
+  ########################
+  
+  MAC <- (BrCcorr*1329787)/InterSMPS$y  
+  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
+  
 } # end of SMPS calculations 
 
 ############
@@ -181,9 +186,9 @@ time_plot <- readline(prompt="What is the reference time for start of experiment
 # rename time series vector
 Time <- TimeSeries[2:numFiles+1]   
 
-# get date of first date/time stamp
+# get date of first date/timestamp
 getDate <- as.Date(head(Time, n=1))  
-  
+
 # create a string with the experiment date and user entered start time
 date_time <- paste(getDate, time_plot)   
 
@@ -199,7 +204,6 @@ difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs") # sec
 # time vector minus difference between actual and desired start 
 CorrectedTime_Ref <- Time-difference           
 
-
 #######################
 ## plot for BrCcorr and MAC at local Paris time
 ########################
@@ -213,31 +217,29 @@ date_grob = grobTree(textGrob(getDate, x=0.1,  y=0.95, hjust=0, gp=gpar(col="bla
 
 # time series vs BrC correction 
 qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line", 
-      xlab="Local Time (Paris)", ylab="Brown Carbon correction", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                xlab="Local Time (Paris)", ylab="Brown Carbon correction", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
 print(qplot1) 
 
 # time series vs MAC, only if you have access to SMPS file 
 if (SMPS_check == "yes"){
   qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
-        xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                  xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
-
 
 #######################
 ## plots for BrCcorr and MAC at reference time 
 ########################
 
 qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line",
-      xlab=paste("Time since", time_plot), ylab="Brown Carbon correction", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
+                xlab=paste("Time since", time_plot), ylab="Brown Carbon correction", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
 print(qplot3) 
-  
+
 if (SMPS_check == "yes"){
   qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line",
-        xlab=paste("Time since", time_plot), ylab="MAC", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
+                  xlab=paste("Time since", time_plot), ylab="MAC", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
   print(qplot4) 
-  }
-
+}
 
 #################
 # Original plots (without ggplot)  
@@ -252,240 +254,230 @@ if (SMPS_check == "yes"){
 #################
 
 if (PTR_plot=="yes") {
-if (SMPS_check == "yes"){
-  
-require("reshape2")
-library("reshape2")
-library("fields")
-  
-# read in PTR Corr Series file, must be tab-demilited
-PTR_Series <- tk_choose.files(default="",caption="Select a tab-delimited PTR Corr Series file")
-PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
-  
-# format time to POSIXct
-# Note: PTR files have different formatting  
-PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
-#PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
-  
-# create data frame with time, MA, MG, Imine
-PTR.df <- data.frame(PTR_time, PTR$MA, PTR$MG, PTR$Imine)
-  
-# create data frame of MAC data with Time Series
-MAC.df <- data.frame(Time, MAC[2:numFiles+1])
-colnames(MAC.df) <- c("Time", "MAC") # rename columns 
-
-par(new=F)
-layout(mat=1)
-# set margins to fit both y-axis
-par(mar = c(4,6,4,6))
-
-# get min and max counts of PTR counts for plotting 
-min_counts <- c(min(PTR.df$PTR.MA, na.rm = TRUE), max(PTR.df$PTR.MG, na.rm = TRUE), max(PTR.df$PTR.Imine, na.rm = TRUE))
-max_counts <- c(max(PTR.df$PTR.MA, na.rm = TRUE), max(PTR.df$PTR.MG, na.rm = TRUE), max(PTR.df$PTR.Imine, na.rm = TRUE))
-
-# Plot of PTR counts versus time
-# Each line is plotted 
-with(PTR.df, plot(PTR_time, PTR.MA, col="blue", type="l", axes=F, xlab=NA, ylab=NA, ylim=c(min(min_counts), max(max_counts))))
-lines(PTR_time, PTR.df$PTR.MG, col="red")
-lines(PTR_time, PTR.df$PTR.Imine, col="green")
-
-# Add axis with label on right side of plot 
-axis(side = 4)
-mtext("Ion count", side = 4, line = 2, las=2)
-
-par(new = T) # indicates that next plotting command should not clear the plot
-
-# plot MAC versus time, add in y-axis label after
-with(MAC.df, plot(Time, MAC, type="l", col="black", xlab="Time", ylab=NA))
-mtext("MAC", line=3, las=2, side=2)
-# add to an existing plot using new=T
-
-# Add in legend on bottomright of plot
-legend("bottomright",
-       col = c("blue", "red", "green", "black"),
-       legend=c("MA", "MG", "Imine", "MAC"),
-       lty=c(1))
-# add date on top of plot
-mtext(getDate, side=3, line=2) 
-
-par(new=F)
-
-}} # end of check for PTR plots
+  if (SMPS_check == "yes"){
+    
+    require("reshape2")
+    library("reshape2")
+    library("fields")
+    
+    # read in PTR Corr Series file, must be tab-demilited
+    PTR_Series <- tk_choose.files(default="",caption="Select a tab-delimited PTR Corr Series file")
+    PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
+    
+    # format time to POSIXct
+    # Note: PTR files have different formatting  
+    #PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
+    PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
+    
+    # create data frame with time, MA, MG, Imine
+    PTR.df <- data.frame(PTR_time, PTR$MA, PTR$MG, PTR$Imine)
+    
+    # create data frame of MAC data with Time Series
+    MAC.df <- data.frame(Time, MAC[2:numFiles+1])
+    colnames(MAC.df) <- c("Time", "MAC") # rename columns 
+    
+    par(new=F)
+    layout(mat=1)
+    # set margins to fit both y-axis
+    par(mar = c(4,6,4,6))
+    
+    # get min and max counts of PTR counts for plotting 
+    min_counts <- c(min(PTR.df$PTR.MA, na.rm = TRUE), max(PTR.df$PTR.MG, na.rm = TRUE), max(PTR.df$PTR.Imine, na.rm = TRUE))
+    max_counts <- c(max(PTR.df$PTR.MA, na.rm = TRUE), max(PTR.df$PTR.MG, na.rm = TRUE), max(PTR.df$PTR.Imine, na.rm = TRUE))
+    
+    # Plot of PTR counts versus time
+    # Each line is plotted 
+    with(PTR.df, plot(PTR_time, PTR.MA, col="blue", type="l", axes=F, xlab=NA, ylab=NA, ylim=c(min(min_counts), max(max_counts))))
+    lines(PTR_time, PTR.df$PTR.MG, col="red")
+    lines(PTR_time, PTR.df$PTR.Imine, col="green")
+    
+    # Add axis with label on right side of plot 
+    axis(side = 4)
+    mtext("Ion count", side = 4, line = 2, las=2)
+    
+    par(new = T) # indicates that next plotting command should not clear the plot
+    
+    # plot MAC versus time, add in y-axis label after
+    with(MAC.df, plot(Time, MAC, type="l", col="black", xlab="Time", ylab=NA))
+    mtext("MAC", line=3, las=2, side=2)
+    # add to an existing plot using new=T
+    
+    # Add in legend on bottomright of plot
+    legend("bottomright",
+           col = c("blue", "red", "green", "black"),
+           legend=c("MA", "MG", "Imine", "MAC"),
+           lty=c(1))
+    # add date on top of plot
+    mtext(getDate, side=3, line=2) 
+    
+    par(new=F)
+    
+  }} # end of check for PTR plots
 
 #################
-## Absorbance versus wavelength for each time 
-## 'Rainbow plot'
+## Rainbow plot -- Absorbance versus wavelength for each time 
 ## We create a matrix with the same dimensions as data_matrixAll 
-## For each time, we subtract the BrCref value from all absorbace measurements 
+## For each time, we subtract the BrCref value from all absorbace measurements and divide through by 
+## the SMPS measurement
+## We also multiply each measurement by the unit correction factor of 1329787
 #################
-
-if (rainbow_plot == "yes"){
 
 library("fields")
 library("maps")
 library("spam")
+
+
+if (rainbow_plot == "yes"){
+  # create new time vector of just times, but keeping the first time stamp
+  # first time stamp is place holder 
+  justTime <- strftime(TimeSeries, format = "%H:%M:%S")
   
-# create new time vector of just times, but keeping the first time stamp
-# first time stamp is place holder 
-justTime <- strftime(TimeSeries, format = "%H:%M:%S")
-
-# create new matrix with same dimensions as data matrix
-matrix_noBrC <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
-
-# rename columns using time series of just times 
-colnames(matrix_noBrC) <- justTime
-
-# Fill matrix_noBrC with wavelength vector and with BrCref subtracted from every absorbance in data_matrix
-i<-1
-for (i in 2:(length(BrCref))){
-  # Add wavelength vector from data_matrix to first column
-  matrix_noBrC[,1] <- data_matrixAll[,1]           
-  # Subtract BrCref from all absorbance measurements from data_matrix
-  matrix_noBrC[,i] <- data_matrixAll[,i]-BrCref[i] 
-}
-
-
-#i <- 2
-#for (i in length(InterSMPS$y)){
-#  matrix_noBrC[,i] <- (matrix_noBrC[,i])/(InterSMPS$y[i])
-
-#}
-
-#i <- 2
-#for (i in length(InterSMPS$y)){
-#  apply(matrix_noBrC[,2:ncol(matrix_noBrC)], 2, function(x) x/InterSMPS$y)
+  # create new matrix with same dimensions as data matrix
+  matrix_noBrC <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
   
-#}
+  # rename columns using time series of just times 
+  colnames(matrix_noBrC) <- justTime
+  
+  # Fill matrix_noBrC with wavelength vector and with BrCref subtracted from every absorbance in data_matrix
+  for (i in 2:(length(BrCref))){
+    # Add wavelength vector from data_matrix to first column
+    matrix_noBrC[,1] <- data_matrixAll[,1]           
+    # Subtract BrCref from all absorbance measurements from data_matrix
+    # Divide each absorbance measurement by SMPS measurement 
+    matrix_noBrC[,i] <- (data_matrixAll[,i]-BrCref[i])/InterSMPS$y[i]
+  }
 
-#sweep(matrix_noBrC[,2:ncol(matrix_noBrC)], 2, InterSMPS$y[2:328] , "/") 
+  numCols <- ncol(matrix_noBrC)
+  
+  # unit correction factor
+  matrix_noBrC[,2:numCols] <- (matrix_noBrC[,2:numCols]*1329787) # unit correction factor 
 
-# create a new matrix with same data as matrix_noBrC to be plotted
-# each absorbance measurement is multiplied by the unit correction factor 
-# matrix_noBrC is not changed, in order to be used below to reduce noise 
-numCols <- ncol(matrix_noBrC)
-matrix_toPlot <- matrix_noBrC 
-matrix_toPlot[,2:numCols] <- (matrix_noBrC[,2:numCols]*1329787) # unit correction factor 
-
-# function to convert HH:MM:SS to hours in order to plot as legend
-Time_asHours <- sapply(strsplit(justTime,":"),
-                       function(x) {
-                         x <- as.numeric(x)
-                         ((x[1]+x[2]/60) + (x[3]/3600)) 
-                         }
-                       )
-# set new plot
-grid.newpage()
-
-# layout to fit both plot & color bar legend
-layout(t(1:2), widths=c(10,2))
-
-# create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
-my.palette <- rainbow(length(justTime), start=0, end=4/6)
-
-# to plot a wavelength & absorbance matrix
-  # matrix[,1] is the wavelength vector
-  # matrix[,-1] is all of the absorbance vectors
-
-# matrix plot without correction factor 
-     matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
-     xlab="wavelength", ylab="absorbance", col = my.palette) 
-
-matplot(matrix_toPlot[,1], matrix_toPlot[,-1], type="l", xlim=c(300,700), ylim=c(-200000, 600000),
-        xlab="wavelength", ylab="absorbance", col = my.palette)
-# y-limits are approximately -.15 to .45 multiplied by correction factor of 1329787
-
-# add color bar to plot 
-image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
-           legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
-
-# add date to the plot
-mtext(getDate, side=3) 
-
-} ## end of check for rainbow plot
+  # function to convert HH:MM:SS to hours in order to plot as legend
+  Time_asHours <- sapply(strsplit(justTime,":"),
+                         function(x) {
+                           x <- as.numeric(x)
+                           ((x[1]+x[2]/60) + (x[3]/3600)) })
+ 
+  # set new plot
+  grid.newpage()
+  
+  # layout to fit both plot & color bar legend
+  layout(t(1:2), widths=c(10,2))
+  
+  # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
+  my.palette <- rainbow(length(justTime), start=0, end=4/6)
+  
+  # Plotting the matrix
+    # matrix_noBrC[,1] is the wavelength vector
+    # matrix_noBrC[,-1] is all of the absorbance vectors
+  
+    # If most of the noise is red, most of the noise is from the beginning of the day
+    # The index to plot of matrix_noBrC[,-1] can be adjusted to start later in the day
+    # Adjust matrix_noBrC[,-1] to matrix_noBrC[,x:numCols] (adjusting x as necessary)
+  
+  matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,600), ylim=c(-5000, 15000),
+         xlab="wavelength", ylab="absorptivity", col = my.palette) 
+  
+  # add color bar to plot 
+  image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
+             legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
+  
+  # add date to the plot
+  mtext(getDate, side=1) 
+  
+} # end of check for rainbow plot
 
 ##########
-# In order to eliminate some of the noise, we remove any measurement with a 
-# standard deviation above 0.05 between wavelengths of approximately 500 and 550 
-# Stan dev is measured from approx. 480 at matrix_noBrC[1450,] to 530 at matrix_noBrC[1700,]
-# We assign each time stamp a 0/1. A 1 is given to times vectors that are removed.
+# In order to eliminate some of the noise, we keep measurements with a 
+# standard deviation below 1000 between wavelengths of approximately 470 and 530 
+# Stan dev is measured from approx. 470 at matrix_noBrC[1400,] to 530 at matrix_noBrC[1700,]
 #########
 
-
 if (corrected_rainbow_plot == "yes"){
+
+  # logical vector indicating if each time has standard deviation below 1000 (TRUE) or above (FALSE)
+  sd_check <- apply( matrix_noBrC[1400:1700,] , 2 , function(x) any( sd(x) < 1000 ) )
+      # can adjust wavelengths and standard deviation level
   
-# Number of columns to loop through
-num_cols <- ncol(matrix_noBrC)
-
-# Create two vectors to fill with length of number of absorbance measurements. 
-# First vector is times
-# Second vector assigns 0 or 1 to each time depending on whether or not it is removed
-times <- vector(length=num_cols)
-removed <- vector(length=num_cols)
-
-# Fill new matrix with values of matrix_noBrC 
-matrix_corr <- matrix_noBrC
-
-i <- 1
-for (i in 2:num_cols){
-  # vector with every time stamp
-  times[i] <- colnames(matrix_noBrC)[i]  
+  # new matrix to fill 
+  matrix_corr <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
   
-  if (sd(matrix_noBrC[1450:1700,i]) > 0.005){   # will likely need to adjust this value
-    # remove column with value i from matrix
-    matrix_corr <- matrix_corr[,-i]    
-    # assign 1 to removed time
-    removed[i] <- 1     
-  }
-  else {
-    # assign 0 to all other times
-    removed[i] <- 0
-  }
-  i <- i+1
-}
+  # add all times below standard deviation criteria to new matrix  
+  matrix_corr <- matrix_noBrC[,sd_check]
+  
+  # multiply logical vector by 1 to turn from T/F to 0/1
+  sd_check <- sd_check*1
+  
+  # Plot to determine if there is a pattern to which times are removed
+  # 0 indicates a time which was removed 
+  grid.newpage()
+  plot(sd_check, yaxt="n", xlab="Index (Time)", ylab="")
+  axis(2, at = seq(0, 1, by = 1), las=2)   # add y-axis
 
-# Create a data frame with time vector and 0/1 vector
-binTimes <- data.frame(times, removed)
-# Plot to determine if there is a pattern to which times are removed
+  #### Plots newmatrix with same parameters as above 
+  # set new plot
+  grid.newpage()
+  
+  # layout to fit both plot & color bar legend
+  layout(t(1:2), widths=c(10,2))
+  
+  # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
+  my.palette <- rainbow(length(justTime), start=0, end=4/6)
+  
+  ################
+  # plot the matrix. adjust matrix_corr[,-1] to reduce more noise. ex: matrix_corr[,30:ncol(matrix_corr)] 
+  matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,600), ylim=c(-5000, 15000), 
+         xlab="wavelength", ylab="absorbance", col = my.palette) 
+  
+  # add color bar to plot 
+  image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
+             legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
+  
+  # add date to the plot
+  mtext(getDate, side=1)
+  
+} # end of check for corrected_rainbow_plot
+
+
+############
+## Log / log plot of absorptivity vs wavelength 
+## We take the log of the entire matrix, and then calculate the mean at each wavelength
+###########
+
+
+if (log_log_plot == "yes"){
+  
+# create new matrix with matrix_noBrC 
+matrix_log <- matrix_noBrC
+# Or with corrected matrix
+#matrix_log <- matrix_corr
+
+# set any value less than 0 to 0
+matrix_log[matrix_log < 0] <- 0
+
+# take natural log of entire matrix
+matrix_log <- log(matrix_log)
+
+# set any infinite (negative) value to 0 in order to take mean of each row
+matrix_log[is.infinite(matrix_log)] <- 0
+
+# take mean along rows (at each wavelength)
+row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)
+
+# plot layout
 grid.newpage()
-par(mar= c(5, 4, 4, 2))
-plot(binTimes$times, binTimes$removed, xlab="Time", yaxt="n") # no y-axis
-axis(2, at = seq(0, 1, by = 1), las=2)                        # add y-axis
-
-# add wavelength vector to corrected matrix
-# matrix_corr <- cbind(matrix_noBrC[,1], matrix_corr)
-
-cols <- ncol(matrix_corr) 
-# multiply absorbances by unit correction factor 
-matrix_corr[,2:cols] <- (matrix_corr[,2:cols]*1329787)
-
-#### Plots new matrix with same parameters as above 
-# set new plot
-grid.newpage()
-
-# layout to fit both plot & color bar legend
 layout(t(1:2), widths=c(10,2))
 
-# create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
-my.palette <- rainbow(length(justTime), start=0, end=4/6)
+# plot this log/log matrix with line plotted over of wavelength versus mean absorbance
+####### adjust matrix_log[,-1] to remove noise. ex: matrix_log[,30:ncol(matrix_log)]
 
-# plot the matrix
-#matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
-#        xlab="wavelength", ylab="absorbance", col = my.palette) 
-matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-200000, 600000), 
-        xlab="wavelength", ylab="absorbance", col = my.palette) 
+matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)),
+        xlab="log(wavelength)", ylab="log(absorptivity)", col = my.palette) 
+
+lines(matrix_log[,1], row_Means) # line of wavelength versus mean
 
 # add color bar to plot 
 image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
            legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
-# add date to the plot
-mtext(getDate, side=1) 
 
-} # end of check for corrected_rainbow_plot
-
-#############
-# log/log plot
-#############
-
-
-
-
+} # end of check for log/log plot
