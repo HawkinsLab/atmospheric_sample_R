@@ -107,14 +107,12 @@ class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
 #Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
 BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
 
-
 # Now we take the average absorption in some long wavelength reference region, usually 700 nm but recently at CESAM
 # We found that 600 or 550 is better due to fluctuating signal 700
 
 #BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 545 & data_matrixAll[,1] < 555))
  
-
 #We must now subtract the absorbance at the reference wavelength from the BrC wavelength
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
@@ -160,9 +158,6 @@ InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = 
 #InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
 
 ##################################
-# NOTE
-# To workaround the "Error in plot.new() : figure margins too large
-# par(mar=c(1,1,1,1))
 
 #####################
 #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
@@ -269,8 +264,8 @@ PTR <- read.table(PTR_Series, sep="\t", header=TRUE, stringsAsFactors = FALSE)
   
 # format time to POSIXct
 # Note: PTR files have different formatting  
-#PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
-PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
+PTR_time <- as.POSIXct(PTR$Time, format="%m/%d/%y %H:%M")  # if date/time is date & time 
+#PTR_time <- as.POSIXct(PTR$Time, format="%H:%M:%S")   # if date/time is just time 
   
 # create data frame with time, MA, MG, Imine
 PTR.df <- data.frame(PTR_time, PTR$MA, PTR$MG, PTR$Imine)
@@ -323,12 +318,13 @@ par(new=F)
 ## We create a matrix with the same dimensions as data_matrixAll 
 ## For each time, we subtract the BrCref value from all absorbace measurements 
 #################
+
+if (rainbow_plot == "yes"){
+
 library("fields")
 library("maps")
 library("spam")
-
-
-if (rainbow_plot == "yes"){
+  
 # create new time vector of just times, but keeping the first time stamp
 # first time stamp is place holder 
 justTime <- strftime(TimeSeries, format = "%H:%M:%S")
@@ -346,14 +342,37 @@ for (i in 2:(length(BrCref))){
   matrix_noBrC[,1] <- data_matrixAll[,1]           
   # Subtract BrCref from all absorbance measurements from data_matrix
   matrix_noBrC[,i] <- data_matrixAll[,i]-BrCref[i] 
-  i<-i+1
 }
+
+
+#i <- 2
+#for (i in length(InterSMPS$y)){
+#  matrix_noBrC[,i] <- (matrix_noBrC[,i])/(InterSMPS$y[i])
+
+#}
+
+#i <- 2
+#for (i in length(InterSMPS$y)){
+#  apply(matrix_noBrC[,2:ncol(matrix_noBrC)], 2, function(x) x/InterSMPS$y)
+  
+#}
+
+#sweep(matrix_noBrC[,2:ncol(matrix_noBrC)], 2, InterSMPS$y[2:328] , "/") 
+
+# create a new matrix with same data as matrix_noBrC to be plotted
+# each absorbance measurement is multiplied by the unit correction factor 
+# matrix_noBrC is not changed, in order to be used below to reduce noise 
+numCols <- ncol(matrix_noBrC)
+matrix_toPlot <- matrix_noBrC 
+matrix_toPlot[,2:numCols] <- (matrix_noBrC[,2:numCols]*1329787) # unit correction factor 
 
 # function to convert HH:MM:SS to hours in order to plot as legend
 Time_asHours <- sapply(strsplit(justTime,":"),
                        function(x) {
                          x <- as.numeric(x)
-                         ((x[1]+x[2]/60) + (x[3]/3600)) })
+                         ((x[1]+x[2]/60) + (x[3]/3600)) 
+                         }
+                       )
 # set new plot
 grid.newpage()
 
@@ -363,17 +382,25 @@ layout(t(1:2), widths=c(10,2))
 # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
 my.palette <- rainbow(length(justTime), start=0, end=4/6)
 
-# plot the matrix
-  # matrix_noBrC[,1] is the wavelength vector
-  # matrix_noBrC[,-1] is all of the absorbance vectors
-matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
-        xlab="wavelength", ylab="absorbance", col = my.palette) 
+# to plot a wavelength & absorbance matrix
+  # matrix[,1] is the wavelength vector
+  # matrix[,-1] is all of the absorbance vectors
+
+# matrix plot without correction factor 
+     matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+     xlab="wavelength", ylab="absorbance", col = my.palette) 
+
+matplot(matrix_toPlot[,1], matrix_toPlot[,-1], type="l", xlim=c(300,700), ylim=c(-200000, 600000),
+        xlab="wavelength", ylab="absorbance", col = my.palette)
+# y-limits are approximately -.15 to .45 multiplied by correction factor of 1329787
 
 # add color bar to plot 
 image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
            legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
+
 # add date to the plot
 mtext(getDate, side=3) 
+
 } ## end of check for rainbow plot
 
 ##########
@@ -385,6 +412,7 @@ mtext(getDate, side=3)
 
 
 if (corrected_rainbow_plot == "yes"){
+  
 # Number of columns to loop through
 num_cols <- ncol(matrix_noBrC)
 
@@ -412,7 +440,7 @@ for (i in 2:num_cols){
     # assign 0 to all other times
     removed[i] <- 0
   }
-  i < i+1
+  i <- i+1
 }
 
 # Create a data frame with time vector and 0/1 vector
@@ -424,8 +452,11 @@ plot(binTimes$times, binTimes$removed, xlab="Time", yaxt="n") # no y-axis
 axis(2, at = seq(0, 1, by = 1), las=2)                        # add y-axis
 
 # add wavelength vector to corrected matrix
-matrix_corr <- cbind(matrix_noBrC[,1], matrix_corr)
+# matrix_corr <- cbind(matrix_noBrC[,1], matrix_corr)
 
+cols <- ncol(matrix_corr) 
+# multiply absorbances by unit correction factor 
+matrix_corr[,2:cols] <- (matrix_corr[,2:cols]*1329787)
 
 #### Plots new matrix with same parameters as above 
 # set new plot
@@ -438,7 +469,9 @@ layout(t(1:2), widths=c(10,2))
 my.palette <- rainbow(length(justTime), start=0, end=4/6)
 
 # plot the matrix
-matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+#matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+#        xlab="wavelength", ylab="absorbance", col = my.palette) 
+matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-200000, 600000), 
         xlab="wavelength", ylab="absorbance", col = my.palette) 
 
 # add color bar to plot 
@@ -448,6 +481,11 @@ image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[lengt
 mtext(getDate, side=1) 
 
 } # end of check for corrected_rainbow_plot
+
+#############
+# log/log plot
+#############
+
 
 
 
