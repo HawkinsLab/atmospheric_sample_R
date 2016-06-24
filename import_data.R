@@ -59,9 +59,15 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   ## Adding the timestamp to list to return in function
   ## Result: data_frm (a data frame object)
   ########################################
+<<<<<<< HEAD
   
   # As a result, returnlist has three items: wavelength, absorbance, Timestamp
   
+=======
+ 
+  # As a result, returnlist has three items: wavelength, absorbance, Timestamp
+
+>>>>>>> 97522f600bdb0500244f9d39878a2ee0cc34374d
   returnlist <- list("wavelength"=as.numeric(data_mat[,1]),"absorbance"=as.numeric(data_mat[,2]), "timeStamp"= date_time)
   return(returnlist) 
   
