@@ -4,8 +4,8 @@
 ######## 
 
 PTR_plot <- "no"
-rainbow_plot <- "yes"
-corrected_rainbow_plot <- "yes"
+rainbow_plot <- "no"
+corrected_rainbow_plot <- "no"
 log_log_plot <- "no"
 
 sd_limit <- 1000
@@ -20,7 +20,6 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Returns: 
   #   A list containing three items, wavelength, absorbance, and timestamp
   # 
-  #  Lelia test commit 6/1/2016
   #######################
   ## Opening the individual text files, getting wavelength and absorbance but not date
   ###########################
@@ -128,6 +127,11 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n: ")
 
 if (SMPS_check == "y"){
+  SMPS_analysis_type <- readline(prompt = "Is the SMPS data file raw data (r) or processed data (p)? ")
+}
+
+
+if (SMPS_check == "y" && SMPS_analysis_type == "r") {
   
   #read in particle concentration data, by allowing user to select the file
   SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
@@ -137,6 +141,10 @@ if (SMPS_check == "y"){
   
   #use the approx function to interpolate
   InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+  
+}
+
+if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   
   ####################################
   ### This section can be used to read in raw SMPS csv file
@@ -153,18 +161,16 @@ if (SMPS_check == "y"){
   SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
   
   ## check if line 15 column 2 is "dw/dlogDp"
-  # if (SMPS$X2[15]=="dw/dlogDp"){
-  #  num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
-  #  SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
-  # } 
+  if (SMPS$X2[15]=="dw/dlogDp"){
+    num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
+    SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
+    } 
   
-  # InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+  InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
   
-  ##################################
-  # NOTE
-  # To workaround the "Error in plot.new() : figure margins too large
-  # par(mar=c(1,1,1,1))
-  
+}
+
+if (SMPS_check == "y") {
   #####################
   #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
   #some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
