@@ -131,7 +131,7 @@ if (SMPS_check == "y"){
 }
 
 
-if (SMPS_check == "y" && SMPS_analysis_type == "r") {
+if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   
   #read in particle concentration data, by allowing user to select the file
   SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
@@ -144,7 +144,7 @@ if (SMPS_check == "y" && SMPS_analysis_type == "r") {
   
 }
 
-if (SMPS_check == "y" && SMPS_analysis_type == "p") {
+if (SMPS_check == "y" && SMPS_analysis_type == "r") {
   
   ####################################
   ### This section can be used to read in raw SMPS csv file
@@ -153,7 +153,7 @@ if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
   
   ## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
-  SMPS <- read.csv(SMPS_testFile, head=FALSE, sep=",", col.names = paste0(seq_len(136)), fill=TRUE)
+  SMPS <- read.csv(SMPS_testFile, header = FALSE, skip = 17, sep="\t", col.names = paste0(seq_len(136)), fill=TRUE)
   
   ## create a date frame with date, time, and total smps concentration
   SMPS_conc <- as.numeric(as.character(SMPS$X136 ))    # total concentration, need to convert to class form 
@@ -190,6 +190,7 @@ if (SMPS_check == "y") {
 # Ask user to enter an experiment start time in HH:MM:SS format. Ex: to start at 9 am , enter 09:00:00. 
 time_plot <- readline(prompt="What is the reference time for the start of the experiment?
 If you'd like 00:00:00, press enter. For another time, enter as HH:MM:SS. ")
+
 if (time_plot == "\n") {
   time_plot <- "00:00:00"
 }
