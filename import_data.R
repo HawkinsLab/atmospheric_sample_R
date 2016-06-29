@@ -114,7 +114,7 @@ class(TimeSeries) <- c('POSIXt','POSIXct')
 
 
 ##########################
-# Perform the baseline correction.
+# Choose the type of baseline correction to apply, and apply it.
 ##########################
 
 # Average the absorbance values from 360 to 370 to get an absorbance value for 365 nm
@@ -130,105 +130,96 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
 
 ##########################
-# Ask for SMPS data, and if there is some, then
+# Ask for SMPS data. If it exists, read it in and format it correctly in a data
+# frame, then interpolate so that we can get data points at the times we sampled at.
+# Calculate MAC at 365 nm.
 ##########################
-#############################
-## Now we begin using SMPS data to normalize absorbance. First we ask user if they have SMPS data. 
-## If 'no' just plot MAC, if 'yes' plot MAC and calculate/plot BrC correction. 
-## We read the file in and format time.
-#########################
 
 SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n: ")
 
 if (SMPS_check == "y"){
+  
+  # Ask what type of file it is (raw or processed)
   SMPS_analysis_type <- readline(prompt = "Is the SMPS data file raw data (r) or processed data (p)? ")
-}
 
+  }
 
 if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   
-  #read in particle concentration data, by allowing user to select the file
+  # read in SMPS processed data by allowing user to select the file
   SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
-  SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
   
+  # format SMPS data
+  SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
   SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
   
-  #use the approx function to interpolate
+  # use the approx function to interpolate
   InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
   
 }
 
 if (SMPS_check == "y" && SMPS_analysis_type == "r") {
   
-  ####################################
-  ### This section can be used to read in raw SMPS csv file
-  
-  # Allow user to select csv file with raw SMPS data
+  # read in SMPS raw data by allowing user to select the file
   SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
   
-  ## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
+  # format SMPS data
+  #### following note seems to be irrelevant as written, with colnames removed
+  #### NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
   SMPS <- read.csv(SMPS_testFile, skip = 17, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
-  
-  ## create a date frame with date, time, and total smps concentration
   SMPS_conc <- as.numeric(as.character(SMPS$V136 ))    # total concentration, need to convert to class form 
   SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")
   SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
   
-  ## check if line 15 column 2 is "dw/dlogDp"
+  # check if line 15 column 2 is "dw/dlogDp"
   if (SMPS$V2[15]=="dw/dlogDp"){
     num <- grepl("^[0-9]",SMPS$V1)    # if this is true, find all the lines starting with a number
     SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
     } 
   
+  # use the approx function to interpolate
   InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
   
 }
 
 if (SMPS_check == "y") {
-  #####################
-  #Finally, we normalize the signal of brown carbon coming from the difference of Abs at 365 nm and 
-  #some reference wavelength (typically 700 nm but in Paris 2015 we found that 550 was more suitable
-  #due to fluctuations at 700 for unknown reasons)
-  ########################
+
+  # calculate MAC at 365 nm using baseline-corrected absorbance  
+  MAC <- (BrCcorr*1329787)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
   
-  MAC <- (BrCcorr*1329787)/InterSMPS$y  
-  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
-  
-} # end of SMPS calculations 
+}
+
+
+
+
+
+
 
 ############
 ## We create a POSIXct date/time with the experiment date and entered desired start time. The difference 
 ## between actual start time and desired start time is subtracted from every date/time.
 ############
 
-# Ask user to enter an experiment start time in HH:MM:SS format. Ex: to start at 9 am , enter 09:00:00. 
-time_plot <- readline(prompt="What is the reference time for the start of the experiment?
-If you'd like 00:00:00, press enter. For another time, enter as HH:MM:SS. ")
+# Ask user to enter an experiment reference start time in HH:MM:SS format. 
+# Ex: to start at 2 pm , enter 14:00:00. 
+time_plot <- readline(prompt="Reference time? For 00:00:00, press enter. For other time, enter as HH:MM:SS. ")
 
 if (time_plot == "\n") {
   time_plot <- "00:00:00"
 }
 
-# rename time series vector
-Time <- TimeSeries[2:numFiles+1]   
+Time <- TimeSeries[2:numFiles+1]    # rename time series vector
+getDate <- as.Date(head(Time, n=1))    # get date of first datetime stamp
+date_time <- paste(getDate, time_plot)    # create a string with the experiment date and user entered start time
+refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time 
+difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual and desired start; seconds can be subtracted directly from POSIX class
+CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start      
 
-# get date of first date/timestamp
-getDate <- as.Date(head(Time, n=1))  
 
-# create a string with the experiment date and user entered start time
-date_time <- paste(getDate, time_plot)   
 
-# convert to POSIXct date / time
-refTime <- as.POSIXct(date_time)         
 
-## In order to adjust the time to start at reference time, we find the difference between the actual start and reference start time.
-## That difference is subtracted from the entire time series.
 
-# difference between actual and desired start
-difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs") # seconds can be subtracted directly from POSIX class
 
-# time vector minus difference between actual and desired start 
-CorrectedTime_Ref <- Time-difference           
 
 #######################
 ## plot for BrCcorr and MAC at local Paris time
