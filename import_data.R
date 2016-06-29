@@ -1,6 +1,6 @@
 ########
 # In order to decide which plots you would like to see , set these variables
-# to either yes or on before runnning the file.
+# to either yes or no before runnning the file.
 ######## 
 
 PTR_plot <- "no"
@@ -8,7 +8,18 @@ rainbow_plot <- "no"
 corrected_rainbow_plot <- "no"
 log_log_plot <- "no"
 
-sd_limit <- 1000
+ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
+sd_limit <- 1000   # standard deviation used to remove noisy spectra
+
+*****************************
+  fix matrix_noBrC
+*****************************
+
+
+
+
+
+
 
 data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   # Process raw data file in tab delimited format 
@@ -68,55 +79,60 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   
 }
 
-#ExptDay <- readline(prompt="Enter the expt day as CESAM_YYMMDD: ")  # removed pattern requirement from list files function
+
+
+
+
+
+
 
 require(tcltk)
 library(tcltk)
 
+# Make window appear that allows user to choose which absorbance spectra to analyze
 SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for absorbance spectra files")
 
-# Get the names of the data files including the full path
+# Get the names of the data files (including the full path) and how many files there are
 files <- list.files(path=SpectraFolder, full.names=TRUE) # see full.names=TRUE
 numFiles <- length(files)
-
-#Before this lines runs, we need to get the nrow for our spectra rather than hard code it
-#then we can use the wavelength range cutoffs. To do this, we need only read in the first column 
-#wavelength, not spectra.
-#require("R.utils")
-#nheaders <- 17 # 17 lines of header
-#numRows <- countLines(files[1]) - nheaders
-
+# number of rows hard coded in
 numRows <- 3648
-data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1) # a place holder (an empty data frame obj), 
+
+# Make a matrix (currently an empty placeholder) that will store all the spectra and wavelengths
+data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1)
+# Make a vector (currently an empty placeholder) that will store all the times
 TimeSeries <- vector(length=numFiles+1)
 
-i <- 1 # index for data_list in the following for loop
+i <- 1
 for(file in files) {
-  # we are trying to pull, file by file, absorbances into a frame, which are contained in the first element of newlist from function above
-  tempList <- data_to_dframe(f=file) 
-  
-  data_matrixAll[,i+1] <- tempList$absorbance
-  data_matrixAll[,1] <- tempList$wavelength
-  
-  TimeSeries[i+1] <- tempList$timeStamp
-  # data_list_uv_mean[[i]] <- lapply(data_list_uv[[i]],mean)
+  # Put the wavelengths, absorbance data, and time from one file into a temporary 2-column data frame
+  tempDframe <- data_to_dframe(f=file) 
+  # Put the absorbance data from this file into the full data-containing matrix
+  data_matrixAll[,i+1] <- tempDframe$absorbance
+  # Put the timestamp from the current file into the time-containing vector
+  TimeSeries[i+1] <- tempDframe$timeStamp
+  # Change the index so we can move to the next position in data_matrix to store new file info
   i <- i + 1
 }
 
-class(TimeSeries) <- c('POSIXt','POSIXct') #reestablishes as time series
+# Put the wavelength values in the data-containing matrix
+data_matrixAll[,1] <- tempList$wavelength
 
-#Now we will take the average of the absorption around the brown carbon region, keeping the time series intact.
+# Make the data in the TimeSeries vector into POSIXct time class (instead of original string)
+class(TimeSeries) <- c('POSIXt','POSIXct')
+
+# Average the absorbance values from 360 to 370 to get an absorbance value for 365 nm
 BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
-
-# Now we take the average absorption in some long wavelength reference region, usually 700 nm but recently at CESAM
-# We found that 600 or 550 is better due to fluctuating signal 700
-
-#BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 695 & data_matrixAll[,1] < 705))
-BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 545 & data_matrixAll[,1] < 555))
-
-
-#We must now subtract the absorbance at the reference wavelength from the BrC wavelength
+# Average the absorbance values around a reference point (that is set above)
+BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > (ref_wave - 5) & data_matrixAll[,1] < (ref_wave + 5)))
+# Remove effect of baseline drift by subtracting baseline absorbance from 365 nm absorbance
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
+
+
+
+
+
+
 
 #############################
 ## Now we begin using SMPS data to normalize absorbance. First we ask user if they have SMPS data. 
@@ -153,16 +169,16 @@ if (SMPS_check == "y" && SMPS_analysis_type == "r") {
   SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
   
   ## NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
-  SMPS <- read.csv(SMPS_testFile, header = FALSE, skip = 17, sep="\t", col.names = paste0(seq_len(136)), fill=TRUE)
+  SMPS <- read.csv(SMPS_testFile, skip = 17, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
   
   ## create a date frame with date, time, and total smps concentration
-  SMPS_conc <- as.numeric(as.character(SMPS$X136 ))    # total concentration, need to convert to class form 
-  SMPS_datetime<- as.POSIXct(paste(SMPS$X2, SMPS$X3), format="%m/%d/%y %H:%M")
+  SMPS_conc <- as.numeric(as.character(SMPS$V136 ))    # total concentration, need to convert to class form 
+  SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")
   SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
   
   ## check if line 15 column 2 is "dw/dlogDp"
-  if (SMPS$X2[15]=="dw/dlogDp"){
-    num <- grepl("^[0-9]",SMPS$X1)    # if this is true, find all the lines starting with a number
+  if (SMPS$V2[15]=="dw/dlogDp"){
+    num <- grepl("^[0-9]",SMPS$V1)    # if this is true, find all the lines starting with a number
     SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
     } 
   
@@ -235,7 +251,7 @@ print(qplot1)
 # time series vs MAC, only if you have access to SMPS file
 if (SMPS_check == "y") {
   qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
-                  xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                  xlab="Local Time (Paris)", ylim=c(-100,3500), ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
 
@@ -244,7 +260,7 @@ if (SMPS_check == "y") {
 ########################
 
 qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line",
-                xlab=paste("Time since", time_plot), ylab="Corrected Absorbance at 365 nm", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
+                xlab=paste("Time since ", time_plot), ylab="Corrected Absorbance at 365 nm", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
 print(qplot3) 
 
 if (SMPS_check == "y"){
