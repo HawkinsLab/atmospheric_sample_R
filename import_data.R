@@ -344,30 +344,13 @@ if (PTR_plot=="yes") {
 
 
 ##########################
-# Plot of MAC and ion counts (from PTR Corr Series file) over time
+# Rainbow plot -- Absorbance versus wavelength for each time
 # Plots only if user has SMPS file
 ##########################
-## Rainbow
 
-
-#################
-## Rainbow plot -- Absorbance versus wavelength for each time 
-## We create a matrix with the same dimensions as data_matrixAll 
-## For each time, we subtract the BrCref value from all absorbace measurements and divide through by 
-## the SMPS measurement
-## We also multiply each measurement by the unit correction factor of 1329787
-#################
-
-#################
-## Absorbance versus wavelength for each time 
-## 'Rainbow plot'
-## We create a matrix with the same dimensions as data_matrixAll 
-## For each time, we subtract the BrCref value from all absorbace measurements 
-#################
 library("fields")
 library("maps")
 library("spam")
-
 
 if (rainbow_plot == "yes"){
   # create new time vector of just times, but keeping the first time stamp
@@ -495,27 +478,10 @@ if (corrected_rainbow_plot == "yes"){
 
 
 
-
-
-
-
-
-
-
-
-
 ##########################
-# Plot of MAC and ion counts (from PTR Corr Series file) over time
+# log-log plot of absorptivity vs wavelength
 # Plots only if user has SMPS file
 ##########################
-
-## log-log
-
-############
-## Log / log plot of absorptivity vs wavelength 
-## We take the log of the entire matrix, and then calculate the mean at each wavelength
-###########
-
 
 if (log_log_plot == "yes"){
   
