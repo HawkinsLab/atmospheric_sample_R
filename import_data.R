@@ -1,10 +1,12 @@
+# Hawkins Lab Data Analysis
+
 ##########################
 # In order to decide which plots you would like to see , set these variables
 # to either yes or no before runnning the file.
 ##########################
 PTR_plot <- "no"
 rainbow_plot <- "yes"
-corrected_rainbow_plot <- "no"
+corrected_rainbow_plot <- "yes"    # cannot markt this as yes if rainbow_plot is no
 log_log_plot <- "no"
 
 ##########################
@@ -12,7 +14,7 @@ log_log_plot <- "no"
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 1000   # standard deviation used to remove noisy spectra
+sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 
 
 
@@ -401,36 +403,34 @@ if (rainbow_plot == "yes") {
 # Plots only if user has SMPS file
 ##########################
 
-if (corrected_rainbow_plot == "yes"){
+if (corrected_rainbow_plot == "yes") {
   
-  num_cols <- ncol(spectra_corr)   # Number of columns to loop through
+  num_cols <- ncol(spectra_corr) - 1    # Number of columns to loop through
   times <- vector(length=num_cols)    # empty vector for times
   removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
   matrix_corr <- spectra_corr    # make new matrix filled with all the corrected spectra
   
-  i <- 1
-  for (i in 2:num_cols){
+  for (i in 2:num_cols) {
     
-    times[i] <- colnames(spectra_corr)[i]    # fill in matrix with times
+    times[i-1] <- colnames(spectra_corr)[i]    # fill in matrix with times
     
     if (sd(spectra_corr[1450:1700,i]) > sd_limit) {   # choose spectra with standard deviation over sd_limit
       matrix_corr <- matrix_corr[,-i]    # remove that spectrum from the matrix of all spectra
-      removed[i] <- 1    # assign 1 to removed time
+      removed[i-1] <- 1    # assign 1 to removed time
     } else {
-      removed[i] <- 0    # assign 0 to all other times
+      removed[i-1] <- 0    # assign 0 to all other times
     }
-    i < i+1
+    
   }
   
   # plot
   grid.newpage()
   par(mar= c(5, 4, 4, 2))
-  plot(times, removed, xlab="Time", yaxt="n") # no y-axis
-  axis(2, at = seq(0, 1, by = 1), las=2)                        # add y-axis
+  plot(removed, xlab="Time", yaxt="n")    # no y-axis
+  axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
   # add wavelength vector to corrected matrix
   matrix_corr <- cbind(spectra_corr[,1], matrix_corr)
-  
   
   #### Plots new matrix with same parameters as above 
   # set new plot
