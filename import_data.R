@@ -352,24 +352,22 @@ library("fields")
 library("maps")
 library("spam")
 
-if (rainbow_plot == "yes"){
-  # create new time vector of just times, but keeping the first time stamp
-  # first time stamp is place holder 
+if (rainbow_plot == "yes") {
+  # create new time vector of just times, but keeping the first time stamp as a placeholder
   justTime <- strftime(TimeSeries, format = "%H:%M:%S")
   
   # create new matrix with same dimensions as data matrix
-  matrix_noBrC <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
+  spectra_corr <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
   
   # rename columns using time series of just times 
-  colnames(matrix_noBrC) <- justTime
+  colnames(spectra_corr) <- justTime
   
-  # Fill matrix_noBrC with wavelength vector and with BrCref subtracted from every absorbance in data_matrix
+  # Fill spectra_corr with wavelength vector and corrected spectra
+  spectra_corr[,1] <- data_matrixAll[,1]    # put wavelengths in first column
   i<-1
   for (i in 2:(length(BrCref))){
-    # Add wavelength vector from data_matrix to first column
-    matrix_noBrC[,1] <- data_matrixAll[,1]           
-    # Subtract BrCref from all absorbance measurements from data_matrix
-    matrix_noBrC[,i] <- data_matrixAll[,i]-BrCref[i] 
+    # put corrected absorbances in other columns
+    spectra_corr[,i] <- data_matrixAll[,i] - BrCref[i]
     i<-i+1
   }
   
@@ -378,77 +376,60 @@ if (rainbow_plot == "yes"){
                          function(x) {
                            x <- as.numeric(x)
                            ((x[1]+x[2]/60) + (x[3]/3600)) })
-  # set new plot
-  grid.newpage()
-  
-  # layout to fit both plot & color bar legend
-  layout(t(1:2), widths=c(10,2))
-  
-  # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
-  my.palette <- rainbow(length(justTime), start=0, end=4/6)
-  
-  # plot the matrix
-  # matrix_noBrC[,1] is the wavelength vector
-  # matrix_noBrC[,-1] is all of the absorbance vectors
-  matplot(matrix_noBrC[,1], matrix_noBrC[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+
+  # plot
+  grid.newpage()    # create new page for plot
+  layout(t(1:2), widths=c(10,2))    # set up the layout of the plot
+  my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
+  matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
           xlab="wavelength", ylab="absorbance", col = my.palette) 
-  
-  # add color bar to plot 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
-             legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
-  # add date to the plot
-  mtext(getDate, side=3) 
-} ## end of check for rainbow plot
+             legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")   # add color bar to plot 
+  mtext(getDate, side=3)    # add date to the plot
+}
 
-##########
-# In order to eliminate some of the noise, we remove any measurement with a 
-# standard deviation above 0.05 between wavelengths of approximately 500 and 550 
-# Stan dev is measured from approx. 480 at matrix_noBrC[1450,] to 530 at matrix_noBrC[1700,]
-# We assign each time stamp a 0/1. A 1 is given to times vectors that are removed.
-#########
 
+
+
+
+
+##########################
+# Rainbow plot with noisy spectra removed
+# Currently removing spectra with a standard deviation over sd_limit (assigned
+# above) over the region 480 nm to 530 nm
+# Also makes a plot to show which spectra were removed
+# Plots only if user has SMPS file
+##########################
 
 if (corrected_rainbow_plot == "yes"){
-  # Number of columns to loop through
-  num_cols <- ncol(matrix_noBrC)
   
-  # Create two vectors to fill with length of number of absorbance measurements. 
-  # First vector is times
-  # Second vector assigns 0 or 1 to each time depending on whether or not it is removed
-  times <- vector(length=num_cols)
-  removed <- vector(length=num_cols)
-  
-  # Fill new matrix with values of matrix_noBrC 
-  matrix_corr <- matrix_noBrC
+  num_cols <- ncol(spectra_corr)   # Number of columns to loop through
+  times <- vector(length=num_cols)    # empty vector for times
+  removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
+  matrix_corr <- spectra_corr    # make new matrix filled with all the corrected spectra
   
   i <- 1
   for (i in 2:num_cols){
-    # vector with every time stamp
-    times[i] <- colnames(matrix_noBrC)[i]  
     
-    if (sd(matrix_noBrC[1450:1700,i]) > 0.001){   # will likely need to adjust this value
-      # remove column with value i from matrix
-      matrix_corr <- matrix_corr[,-i]    
-      # assign 1 to removed time
-      removed[i] <- 1     
-    }
-    else {
-      # assign 0 to all other times
-      removed[i] <- 0
+    times[i] <- colnames(spectra_corr)[i]    # fill in matrix with times
+    
+    if (sd(spectra_corr[1450:1700,i]) > sd_limit) {   # choose spectra with standard deviation over sd_limit
+      matrix_corr <- matrix_corr[,-i]    # remove that spectrum from the matrix of all spectra
+      removed[i] <- 1    # assign 1 to removed time
+    } else {
+      removed[i] <- 0    # assign 0 to all other times
     }
     i < i+1
   }
   
-  # Create a data frame with time vector and 0/1 vector
-  binTimes <- data.frame(times, removed)
-  # Plot to determine if there is a pattern to which times are removed
+  # plot
   grid.newpage()
   par(mar= c(5, 4, 4, 2))
-  plot(binTimes$times, binTimes$removed, xlab="Time", yaxt="n") # no y-axis
+  plot(times, removed, xlab="Time", yaxt="n") # no y-axis
   axis(2, at = seq(0, 1, by = 1), las=2)                        # add y-axis
   
   # add wavelength vector to corrected matrix
-  matrix_corr <- cbind(matrix_noBrC[,1], matrix_corr)
+  matrix_corr <- cbind(spectra_corr[,1], matrix_corr)
   
   
   #### Plots new matrix with same parameters as above 
@@ -485,31 +466,21 @@ if (corrected_rainbow_plot == "yes"){
 
 if (log_log_plot == "yes"){
   
-  # create new matrix with matrix_noBrC 
-  matrix_log <- spectra_corr
+  matrix_log <- spectra_corr    # create new matrix by copying the corrected spectra 
+  matrix_log[matrix_log < 0] <- 0    # set any value less than 0 to 0
+  matrix_log <- log(matrix_log)    # take natural log of entire matrix
+  matrix_log[is.infinite(matrix_log)] <- 0    # set any infinite (negative) value to 0 in order to take mean of each row
+  row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
   
-  # set any value less than 0 to 0
-  matrix_log[matrix_log < 0] <- 0
+  # plot
+  grid.newpage()    # make new page to plot on
+  layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
   
-  # take natural log of entire matrix
-  matrix_log <- log(matrix_log)
-  
-  # set any infinite (negative) value to 0 in order to take mean of each row
-  matrix_log[is.infinite(matrix_log)] <- 0
-  
-  # take mean along rows (at each wavelength)
-  row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)
-  
-  # plot layout
-  grid.newpage()
-  layout(t(1:2), widths=c(10,2))
-  
-  # plot this log/log matrix with line plotted over of wavelength versus mean absorbance
-  ####### adjust matrix_log[,-1] to remove noise. ex: matrix_log[,30:ncol(matrix_log)]
-  
+  # plot this log/log matrix
   matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)),
           xlab="log(wavelength)", ylab="log(absorptivity)", col = my.palette) 
   
+  # add line of mean absorbance vs log wavelength
   lines(matrix_log[,1], row_Means) # line of wavelength versus mean
   
   # add color bar to plot 
