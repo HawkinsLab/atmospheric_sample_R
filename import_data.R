@@ -366,11 +366,9 @@ if (rainbow_plot == "yes") {
   
   # Fill spectra_corr with wavelength vector and corrected spectra
   spectra_corr[,1] <- data_matrixAll[,1]    # put wavelengths in first column
-  i<-1
   for (i in 2:(length(BrCref))){
     # put corrected absorbances in other columns
     spectra_corr[,i] <- data_matrixAll[,i] - BrCref[i]
-    i<-i+1
   }
   
   # function to convert HH:MM:SS to hours in order to plot as legend
