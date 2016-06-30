@@ -6,7 +6,7 @@
 ##########################
 PTR_plot <- "no"
 rainbow_plot <- "yes"
-corrected_rainbow_plot <- "yes"    # cannot markt this as yes if rainbow_plot is no
+corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "no"
 
 ##########################
@@ -149,7 +149,7 @@ if (SMPS_check == "y"){
 if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   
   # read in SMPS processed data by allowing user to select the file
-  SMPSfile <- tk_choose.files(default="",caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
+  SMPSfile <- tk_choose.files(default="", caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
   
   # format SMPS data
   SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
@@ -242,7 +242,7 @@ print(qplot1)
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
   qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
-                  xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                  xlab="Local Time (Paris)", ylim = c(-5000,5000), ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
 
