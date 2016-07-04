@@ -4,10 +4,12 @@
 # In order to decide which plots you would like to see , set these variables
 # to either yes or no before runnning the file.
 ##########################
+
 PTR_plot <- "no"
 rainbow_plot <- "yes"
-corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
+corrected_rainbow_plot <- "no"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "no"
+save_graphs <- "yes"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
@@ -131,6 +133,7 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
 
 
+
 ##########################
 # Ask for SMPS data. If it exists, read it in and format it correctly in a data
 # frame, then interpolate so that we can get data points at the times we sampled at.
@@ -224,27 +227,47 @@ CorrectedTime_Ref <- Time - difference    # new referenced times; original time 
 
 
 ##########################
-## plot for BrCcorr and MAC at local Paris time
+## plot BrCcorr and MAC at local Paris time
 ##########################
 require(ggplot2)
 require(grid)
 library(ggplot2)
 library(grid)
 
+# create a PDF file to save plot to
+if (save_graphs == "yes" ) {
+  pdf("corrected abs at 365 vs real time.pdf")
+}
+
 # create a grob (grid graphical object) with the current date to add to plots 
 date_grob = grobTree(textGrob(getDate, x=0.1,  y=0.95, hjust=0, gp=gpar(col="black", fontsize=15, fontface="italic")))
-
 # corrected absorbance vs time series
 qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line", 
                 xlab="Local Time (Paris)", ylab="Corrected Absorbance at 365 nm", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
 print(qplot1) 
 
+# turn off PDF save
+if (save_graphs == "yes" ) {
+  dev.off()
+}
+
+# create a PDF file to save plot to
+if (save_graphs == "yes" ) {
+  pdf("MAC vs real time.pdf")
+}
+
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
   qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
-                  xlab="Local Time (Paris)", ylim = c(-5000,5000), ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                  xlab="Local Time (Paris)", ylim = c(0,2000), ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
+
+# turn off PDF save
+if (save_graphs == "yes" ) {
+  dev.off()
+}
+
 
 
 
@@ -254,16 +277,36 @@ if (SMPS_check == "y") {
 ## plots for BrCcorr and MAC at reference time 
 ##########################
 
+# create a PDF file to save plot to
+if (save_graphs == "yes" ) {
+  pdf("corrected absorbance at 365 vs referenced time.pdf")
+}
+
 # corrected absorbance vs time series
 qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line",
                 xlab=paste("Time since ", time_plot), ylab="Corrected Absorbance at 365 nm", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
 print(qplot3) 
+
+# turn off PDF save
+if (save_graphs == "yes" ) {
+  dev.off()
+}
+
+# create a PDF file to save plot to
+if (save_graphs == "yes" ) {
+  pdf("MAC vs referenced time.pdf")
+}
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y"){
   qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line",
                   xlab=paste("Time since", time_plot), ylab="MAC", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
   print(qplot4) 
+}
+
+# turn off PDF save
+if (save_graphs == "yes" ) {
+  dev.off()
 }
 
 
@@ -300,6 +343,11 @@ if (PTR_plot=="yes") {
     MAC.df <- data.frame(Time, MAC[2:numFiles+1])
     colnames(MAC.df) <- c("Time", "MAC") # rename columns 
     
+    # create a PDF file to save plot to
+    if (save_graphs == "yes" ) {
+      pdf("PTR.pdf")
+    }
+    
     par(new=F)
     layout(mat=1)
     # set margins to fit both y-axis
@@ -335,6 +383,11 @@ if (PTR_plot=="yes") {
     mtext(getDate, side=3, line=2) 
     
     par(new=F)
+    
+    # turn off PDF save
+    if (save_graphs == "yes" ) {
+      dev.off()
+    }
     
   }} # end of check for PTR plots
 
@@ -376,6 +429,11 @@ if (rainbow_plot == "yes") {
                          function(x) {
                            x <- as.numeric(x)
                            ((x[1]+x[2]/60) + (x[3]/3600)) })
+  
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    pdf("rainbow_plot_all.pdf")
+  }
 
   # plot
   grid.newpage()    # create new page for plot
@@ -386,6 +444,11 @@ if (rainbow_plot == "yes") {
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
              legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")   # add color bar to plot 
   mtext(getDate, side=3)    # add date to the plot
+  
+  # turn off PDF save
+  if (save_graphs == "yes" ) {
+    dev.off()
+  }
 }
 
 
@@ -421,6 +484,11 @@ if (corrected_rainbow_plot == "yes") {
     
   }
   
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    pdf("rainbow_plot_corrected.pdf")
+  }
+  
   # plot
   grid.newpage()
   par(mar= c(5, 4, 4, 2))
@@ -450,6 +518,11 @@ if (corrected_rainbow_plot == "yes") {
   # add date to the plot
   mtext(getDate, side=1) 
   
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    dev.off()
+  }
+  
 } # end of check for corrected_rainbow_plot
 
 
@@ -470,6 +543,11 @@ if (log_log_plot == "yes"){
   matrix_log[is.infinite(matrix_log)] <- 0    # set any infinite (negative) value to 0 in order to take mean of each row
   row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
   
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    pdf("log-log.pdf")
+  }
+  
   # plot
   grid.newpage()    # make new page to plot on
   layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
@@ -484,6 +562,11 @@ if (log_log_plot == "yes"){
   # add color bar to plot 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
              legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")
+  
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    dev.off()
+  }
   
 } # end of check for log/log plot
 
