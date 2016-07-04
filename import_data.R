@@ -190,7 +190,7 @@ if (SMPS_check == "y" && SMPS_analysis_type == "r") {
 if (SMPS_check == "y") {
 
   # calculate MAC at 365 nm using baseline-corrected absorbance  
-  MAC <- (BrCcorr*1329787)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
+  MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
   
 }
 
