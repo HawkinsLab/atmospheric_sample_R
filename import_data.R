@@ -6,9 +6,9 @@
 ##########################
 
 PTR_plot <- "no"
-rainbow_plot <- "no"
-corrected_rainbow_plot <- "no"    # cannot mark this as yes if rainbow_plot is no
-log_log_plot <- "no"
+rainbow_plot <- "yes"
+corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
+log_log_plot <- "yes"
 save_graphs <- "yes"
 
 ##########################
@@ -349,7 +349,7 @@ if (PTR_plot=="yes") {
     
     # create a PDF file to save plot to
     if (save_graphs == "yes" ) {
-      pdf("PTR.pdf")
+      pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "PTR.pdf"))
     }
     
     par(new=F)
@@ -433,16 +433,17 @@ if (rainbow_plot == "yes") {
                          function(x) {
                            x <- as.numeric(x)
                            ((x[1]+x[2]/60) + (x[3]/3600)) })
-  
-  # create a PDF file to save plot to
-  if (save_graphs == "yes" ) {
-    pdf("rainbow_plot_all.pdf")
-  }
 
   # plot
   grid.newpage()    # create new page for plot
   layout(t(1:2), widths=c(10,2))    # set up the layout of the plot
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
+  
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot.pdf"))
+  }
+  
   matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
           xlab="wavelength", ylab="absorbance", col = my.palette) 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
@@ -491,12 +492,6 @@ if (corrected_rainbow_plot == "yes") {
   # plot
   grid.newpage()
   par(mar= c(5, 4, 4, 2))
-  
-  # create a PDF file to save plot to
-  if (save_graphs == "yes" ) {
-    pdf("rainbow_plot_corrected.pdf")
-  }
-  
   plot(removed, xlab="Time", yaxt="n")    # no y-axis
   axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
@@ -512,6 +507,11 @@ if (corrected_rainbow_plot == "yes") {
   
   # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   my.palette <- rainbow(length(justTime), start=0, end=4/6)
+  
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot corrected.pdf"))
+  }
   
   # plot the matrix
   matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
@@ -554,7 +554,7 @@ if (log_log_plot == "yes"){
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
-    pdf("log-log.pdf")
+    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "log log.pdf"))
   }
   
   # plot this log/log matrix
