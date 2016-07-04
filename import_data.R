@@ -9,7 +9,7 @@ PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"
-save_graphs <- "no"
+save_graphs <- "yes"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
@@ -21,12 +21,12 @@ sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -1500
-MAC_ymax <- 1500
-corr_abs_ymin <- -0.01
-corr_abs_ymax <- 0.02
-rainbow_ymin <- -0.05
-rainbow_ymax <- 0.2
+MAC_ymin <- -1000
+MAC_ymax <- 5000
+corr_abs_ymin <- -0.001
+corr_abs_ymax <- 0.01
+rainbow_ymin <- -0.02
+rainbow_ymax <- 0.1
 log_ymin <- -5
 log_ymax <- 5
 
