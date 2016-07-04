@@ -9,7 +9,7 @@ PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"
-save_graphs <- "yes"
+save_graphs <- "no"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
@@ -18,6 +18,17 @@ save_graphs <- "yes"
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
 sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 
+##########################
+# Graphing paramters
+##########################
+MAC_ymin <- -1500
+MAC_ymax <- 1500
+corr_abs_ymin <- -0.01
+corr_abs_ymax <- 0.02
+rainbow_ymin <- -0.05
+rainbow_ymax <- 0.2
+log_ymin <- -5
+log_ymax <- 5
 
 
 
@@ -230,6 +241,9 @@ path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_pat
 
 
 
+
+
+
 ##########################
 ## plot BrCcorr and MAC at local Paris time
 ##########################
@@ -246,7 +260,7 @@ if (save_graphs == "yes" ) {
 # create a grob (grid graphical object) with the current date to add to plots 
 date_grob = grobTree(textGrob(getDate, x=0.1,  y=0.95, hjust=0, gp=gpar(col="black", fontsize=15, fontface="italic")))
 # corrected absorbance vs time series
-qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line", 
+qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line", ylim = c(corr_abs_ymin,corr_abs_ymax),
                 xlab="Local Time (Paris)", ylab="Corrected Absorbance at 365 nm", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
 print(qplot1) 
 
@@ -262,8 +276,8 @@ if (save_graphs == "yes" ) {
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
-  qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
-                  xlab="Local Time (Paris)", ylim = c(0,2000), ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+  qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line", ylim = c(MAC_ymin, MAC_ymax),
+                  xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
 
@@ -287,7 +301,7 @@ if (save_graphs == "yes" ) {
 }
 
 # corrected absorbance vs time series
-qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line",
+qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line", ylim = c(corr_abs_ymin,corr_abs_ymax),
                 xlab=paste("Time since ", time_plot), ylab="Corrected Absorbance at 365 nm", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
 print(qplot3) 
 
@@ -303,7 +317,7 @@ if (save_graphs == "yes" ) {
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y"){
-  qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line",
+  qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line", ylim = c(MAC_ymin, MAC_ymax),
                   xlab=paste("Time since", time_plot), ylab="MAC", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
   print(qplot4) 
 }
@@ -444,7 +458,7 @@ if (rainbow_plot == "yes") {
     pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot.pdf"))
   }
   
-  matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+  matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
           xlab="wavelength", ylab="absorbance", col = my.palette) 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
              legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")   # add color bar to plot 
@@ -514,7 +528,7 @@ if (corrected_rainbow_plot == "yes") {
   }
   
   # plot the matrix
-  matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(-0.15,.45), 
+  matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
           xlab="wavelength", ylab="absorbance", col = my.palette) 
   
   # add color bar to plot 
@@ -558,7 +572,7 @@ if (log_log_plot == "yes"){
   }
   
   # plot this log/log matrix
-  matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)),
+  matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)), ylim = c(log_ymin, log_ymax),
           xlab="log(wavelength)", ylab="log(absorptivity)", col = my.palette) 
   
   # add line of mean absorbance vs log wavelength
