@@ -1,12 +1,12 @@
 # Hawkins Lab Data Analysis
 
 ##########################
-# In order to decide which plots you would like to see , set these variables
+# In order to decide which plots you would like to see, set these variables
 # to either yes or no before runnning the file.
 ##########################
 
 PTR_plot <- "no"
-rainbow_plot <- "yes"
+rainbow_plot <- "no"
 corrected_rainbow_plot <- "no"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "no"
 save_graphs <- "yes"
@@ -220,8 +220,12 @@ refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time
 difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual and desired start; seconds can be subtracted directly from POSIX class
 CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start      
 
-
-
+# gets the date of the files being analyzed from the reference date above
+date_str <- as.character(getDate)   # make the date a string
+split <- strsplit(date_str, "-")   # split the string at the -
+expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format
+split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
+path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
 
 
 
@@ -236,7 +240,7 @@ library(grid)
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf("corrected abs at 365 vs real time.pdf")
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.pdf"))
 }
 
 # create a grob (grid graphical object) with the current date to add to plots 
@@ -253,7 +257,7 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf("MAC vs real time.pdf")
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time.pdf"))
 }
 
 # MAC vs time series, only if you have access to SMPS file
@@ -279,7 +283,7 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf("corrected absorbance at 365 vs referenced time.pdf")
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time.pdf"))
 }
 
 # corrected absorbance vs time series
@@ -294,7 +298,7 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf("MAC vs referenced time.pdf")
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time.pdf"))
 }
 
 # MAC vs time series, only if you have access to SMPS file
@@ -484,14 +488,15 @@ if (corrected_rainbow_plot == "yes") {
     
   }
   
+  # plot
+  grid.newpage()
+  par(mar= c(5, 4, 4, 2))
+  
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
     pdf("rainbow_plot_corrected.pdf")
   }
   
-  # plot
-  grid.newpage()
-  par(mar= c(5, 4, 4, 2))
   plot(removed, xlab="Time", yaxt="n")    # no y-axis
   axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
@@ -543,14 +548,14 @@ if (log_log_plot == "yes"){
   matrix_log[is.infinite(matrix_log)] <- 0    # set any infinite (negative) value to 0 in order to take mean of each row
   row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
   
+  # plot
+  grid.newpage()    # make new page to plot on
+  layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
+  
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
     pdf("log-log.pdf")
   }
-  
-  # plot
-  grid.newpage()    # make new page to plot on
-  layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
   
   # plot this log/log matrix
   matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)),
