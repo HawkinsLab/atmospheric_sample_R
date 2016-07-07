@@ -6,10 +6,10 @@
 ##########################
 
 PTR_plot <- "no"
-rainbow_plot <- "yes"
-corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
+rainbow_plot <- "no"
+corrected_rainbow_plot <- "no"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"
-save_graphs <- "yes"
+save_graphs <- "no"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
@@ -21,12 +21,12 @@ sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -1000
-MAC_ymax <- 5000
-corr_abs_ymin <- -0.001
-corr_abs_ymax <- 0.01
-rainbow_ymin <- -0.02
-rainbow_ymax <- 0.1
+MAC_ymin <- 0
+MAC_ymax <- 1000
+corr_abs_ymin <- -0.0
+corr_abs_ymax <- 0.02
+rainbow_ymin <- -0.0
+rainbow_ymax <- 0.07
 log_ymin <- -5
 log_ymax <- 5
 
@@ -117,7 +117,7 @@ for(file in files) {
 }
 
 # Put the wavelength values in the data-containing matrix
-data_matrixAll[,1] <- tempList$wavelength
+data_matrixAll[,1] <- tempDframe$wavelength
 
 # Make the data in the TimeSeries vector into POSIXct time class (instead of original string)
 class(TimeSeries) <- c('POSIXt','POSIXct')
@@ -259,9 +259,19 @@ if (save_graphs == "yes" ) {
 
 # create a grob (grid graphical object) with the current date to add to plots 
 date_grob = grobTree(textGrob(getDate, x=0.1,  y=0.95, hjust=0, gp=gpar(col="black", fontsize=15, fontface="italic")))
+
+# create a theme for all graphs
+theme_best <- function(base_size = 12) {
+  structure( list(
+    axis.line = theme_blank()
+  ), class = "options")
+}
+
+
 # corrected absorbance vs time series
 qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line", ylim = c(corr_abs_ymin,corr_abs_ymax),
-                xlab="Local Time (Paris)", ylab="Corrected Absorbance at 365 nm", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                xlab="Local Time (Paris)", ylab="Corrected Absorbance at 365 nm",
+                show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
 print(qplot1) 
 
 # turn off PDF save
@@ -277,7 +287,8 @@ if (save_graphs == "yes" ) {
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
   qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line", ylim = c(MAC_ymin, MAC_ymax),
-                  xlab="Local Time (Paris)", ylab="MAC", show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
+                  xlab="Local Time (Paris)", ylab=expression(paste(MAC[365], " (c", m^{2}, "/g OM)")),
+                  show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot2)
 } 
 
@@ -302,7 +313,8 @@ if (save_graphs == "yes" ) {
 
 # corrected absorbance vs time series
 qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line", ylim = c(corr_abs_ymin,corr_abs_ymax),
-                xlab=paste("Time since ", time_plot), ylab="Corrected Absorbance at 365 nm", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
+                xlab=paste("Time since ", format(Time[1], format =  "%H:%M:%S")), ylab="Corrected Absorbance at 365 nm",
+                show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
 print(qplot3) 
 
 # turn off PDF save
@@ -316,9 +328,10 @@ if (save_graphs == "yes" ) {
 }
 
 # MAC vs time series, only if you have access to SMPS file
-if (SMPS_check == "y"){
+if (SMPS_check == "y") {
   qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line", ylim = c(MAC_ymin, MAC_ymax),
-                  xlab=paste("Time since", time_plot), ylab="MAC", show.legend=FALSE)+ annotation_custom(date_grob) + theme_bw()
+                  xlab=paste("Time since", format(Time[1], format =  "%H:%M:%S")), ylab=expression(paste(MAC[365], " (c", m^{2}, "/g OM)")), 
+                  show.legend=FALSE) + annotation_custom(date_grob) + theme_bw()
   print(qplot4) 
 }
 
