@@ -6,9 +6,9 @@
 ##########################
 
 PTR_plot <- "no"
-rainbow_plot <- "no"
-corrected_rainbow_plot <- "no"    # cannot mark this as yes if rainbow_plot is no
-log_log_plot <- "yes"
+rainbow_plot <- "yes"
+corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
+log_log_plot <- "no"
 save_graphs <- "no"
 
 ##########################
@@ -30,11 +30,7 @@ rainbow_ymax <- 0.07
 log_ymin <- -5
 log_ymax <- 5
 
-
-
-
-
-
+# import -----------
 ##########################
 # Import the spectral data. Function returns a list with wavelengths, absorbance data
 # for all files, and timestamps
@@ -77,12 +73,7 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
   
 }
 
-
-
-
-
-
-
+# import and format -----------
 ##########################
 # Choose the data to import and format it correctly.
 ##########################
@@ -122,12 +113,7 @@ data_matrixAll[,1] <- tempDframe$wavelength
 # Make the data in the TimeSeries vector into POSIXct time class (instead of original string)
 class(TimeSeries) <- c('POSIXt','POSIXct')
 
-
-
-
-
-
-
+# baseline calcs -----------
 ##########################
 # Choose the type of baseline correction to apply, and apply it.
 ##########################
@@ -139,12 +125,7 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > (ref_wave - 5) & d
 # Remove effect of baseline drift by subtracting baseline absorbance from 365 nm absorbance
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
-
-
-
-
-
-
+# SMPS calcs -----------
 ##########################
 # Ask for SMPS data. If it exists, read it in and format it correctly in a data
 # frame, then interpolate so that we can get data points at the times we sampled at.
@@ -205,12 +186,7 @@ if (SMPS_check == "y") {
   
 }
 
-
-
-
-
-
-
+# time calcs -----------
 ##########################
 ## We create a POSIXct date/time with the experiment date and entered desired start time. The difference 
 ## between actual start time and desired start time is subtracted from every date/time.
@@ -238,12 +214,7 @@ expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the da
 split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
 path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
 
-
-
-
-
-
-
+# local time plots -----------
 ##########################
 ## plot BrCcorr and MAC at local Paris time
 ##########################
@@ -297,11 +268,7 @@ if (save_graphs == "yes" ) {
   dev.off()
 }
 
-
-
-
-
-
+# ref time plots -----------
 ##########################
 ## plots for BrCcorr and MAC at reference time 
 ##########################
@@ -340,12 +307,7 @@ if (save_graphs == "yes" ) {
   dev.off()
 }
 
-
-
-
-
-
-
+# PTR -----------
 ##########################
 # Plot of MAC and ion counts (from PTR Corr Series file) over time
 # Plots only if user has SMPS file
@@ -422,13 +384,7 @@ if (PTR_plot=="yes") {
     
   }} # end of check for PTR plots
 
-
-
-
-
-
-
-
+# rainbow -----------
 ##########################
 # Rainbow plot -- Absorbance versus wavelength for each time
 # Plots only if user has SMPS file
@@ -462,7 +418,7 @@ if (rainbow_plot == "yes") {
                            ((x[1]+x[2]/60) + (x[3]/3600)) })
 
   # plot
-  grid.newpage()    # create new page for plot
+  #grid.newpage()    # create new page for plot
   layout(t(1:2), widths=c(10,2))    # set up the layout of the plot
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   
@@ -483,15 +439,11 @@ if (rainbow_plot == "yes") {
   }
 }
 
-
-
-
-
-
+# corrected rainbow -----------
 ##########################
 # Rainbow plot with noisy spectra removed
 # Currently removing spectra with a standard deviation over sd_limit (assigned
-# above) over the region 480 nm to 530 nm
+# above) over the region 390 nm to 410 nm
 # Also makes a plot to show which spectra were removed
 # Plots only if user has SMPS file
 ##########################
@@ -502,32 +454,37 @@ if (corrected_rainbow_plot == "yes") {
   times <- vector(length=num_cols)    # empty vector for times
   removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
   matrix_corr <- spectra_corr    # make new matrix filled with all the corrected spectra
+  index_log <- vector(length=0)
   
   for (i in 2:num_cols) {
     
     times[i-1] <- colnames(spectra_corr)[i]    # fill in matrix with times
     
-    if (sd(spectra_corr[1450:1700,i]) > sd_limit) {   # choose spectra with standard deviation over sd_limit
-      matrix_corr <- matrix_corr[,-i]    # remove that spectrum from the matrix of all spectra
+    if (mean(spectra_corr[920:1020,i]) > 3 * mean(spectra_corr[920:1020,2:num_cols])) {   # choose spectra with standard deviation over sd_limit
+      index_log <- append(index_log, i)
+      #matrix_corr <- matrix_corr[,-i]    # remove that spectrum from the matrix of all spectra
       removed[i-1] <- 1    # assign 1 to removed time
     } else {
       removed[i-1] <- 0    # assign 0 to all other times
     }
-    
+  }
+  
+  index_log_rev <- rev(index_log)
+  
+  for (i in index_log_rev) {
+    matrix_corr <- matrix_corr[,-i]
   }
   
   # plot
   grid.newpage()
-  par(mar= c(5, 4, 4, 2))
-  plot(removed, xlab="Time", yaxt="n")    # no y-axis
+  par(mar= c(5, 2, 4, 2) + 0.1)
+  plot(Time_asHours, removed, xlab="Time", yaxt="n")    # no y-axis
   axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
   # add wavelength vector to corrected matrix
   matrix_corr <- cbind(spectra_corr[,1], matrix_corr)
   
   #### Plots new matrix with same parameters as above 
-  # set new plot
-  grid.newpage()
   
   # layout to fit both plot & color bar legend
   layout(t(1:2), widths=c(10,2))
@@ -557,11 +514,7 @@ if (corrected_rainbow_plot == "yes") {
   
 } # end of check for corrected_rainbow_plot
 
-
-
-
-
-
+# log log -----------
 ##########################
 # log-log plot of absorptivity vs wavelength
 # Plots only if user has SMPS file
@@ -576,7 +529,7 @@ if (log_log_plot == "yes"){
   row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
   
   # plot
-  grid.newpage()    # make new page to plot on
+  #grid.newpage()    # make new page to plot on
   layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
   
   # create a PDF file to save plot to
