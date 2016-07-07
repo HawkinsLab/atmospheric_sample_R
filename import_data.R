@@ -125,6 +125,36 @@ BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > (ref_wave - 5) & d
 # Remove effect of baseline drift by subtracting baseline absorbance from 365 nm absorbance
 BrCcorr <- BrC365-BrCref #closer to actual signal we want
 
+# time calcs -----------
+##########################
+## We create a POSIXct date/time with the experiment date and entered desired start time. The difference 
+## between actual start time and desired start time is subtracted from every date/time.
+##########################
+
+# Ask user to enter an experiment reference start time in HH:MM:SS format. 
+# Ex: to start at 2 pm , enter 14:00:00. 
+#time_plot <- readline(prompt="Reference time? For 00:00:00, press enter. For other time, enter as HH:MM:SS. ")
+
+#if (time_plot == "\n") {
+#  time_plot <- "00:00:00"
+#}
+
+time_plot <- "00:00:00"
+
+Time <- TimeSeries[2:numFiles+1]    # rename time series vector
+getDate <- as.Date(head(Time, n=1))    # get date of first datetime stamp
+date_time <- paste(getDate, time_plot)    # create a string with the experiment date and user entered start time
+refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time 
+difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual and desired start; seconds can be subtracted directly from POSIX class
+CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start      
+
+# gets the date of the files being analyzed from the reference date above
+date_str <- as.character(getDate)   # make the date a string
+split <- strsplit(date_str, "-")   # split the string at the -
+expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format
+split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
+path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
+
 # SMPS calcs -----------
 ##########################
 # Ask for SMPS data. If it exists, read it in and format it correctly in a data
@@ -132,33 +162,38 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 # Calculate MAC at 365 nm.
 ##########################
 
-SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n: ")
+path_prelim_SMPS <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "SMPS"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
+SMPS_check <- "y"
 
-if (SMPS_check == "y"){
+#SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n: ")
+
+#if (SMPS_check == "y"){
   
   # Ask what type of file it is (raw or processed)
-  SMPS_analysis_type <- readline(prompt = "Is the SMPS data file raw data (r) or processed data (p)? ")
+#  SMPS_analysis_type <- readline(prompt = "Is the SMPS data file raw data (r) or processed data (p)? ")
 
-  }
+#  }
 
-if (SMPS_check == "y" && SMPS_analysis_type == "p") {
+#if (SMPS_check == "y" && SMPS_analysis_type == "p") {
   
   # read in SMPS processed data by allowing user to select the file
-  SMPSfile <- tk_choose.files(default="", caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
+#  SMPSfile <- tk_choose.files(default="", caption="Select a tab-delimited SMPS file with mm/dd/yyyy format")
   
   # format SMPS data
-  SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
-  SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
+#  SMPS <- read.table(SMPSfile, sep="\t", header=TRUE,stringsAsFactors = FALSE)
+#  SMPS$smpstimeFormatted <- as.POSIXct(SMPS$smpstime, format="%m/%d/%Y %H:%M")
   
   # use the approx function to interpolate
-  InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
+#  InterSMPS <- approx(SMPS$smpstimeFormatted, SMPS$smpsconc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
   
-}
+#}
 
-if (SMPS_check == "y" && SMPS_analysis_type == "r") {
+#&& SMPS_analysis_type == "r"
+if (SMPS_check == "y") {
   
   # read in SMPS raw data by allowing user to select the file
-  SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
+  SMPS_testFile <- file.path(path_prelim_SMPS, paste("CESAM_", expt_date, "_SMPS.txt", sep=""))
+  #SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
   
   # format SMPS data
   #### following note seems to be irrelevant as written, with colnames removed
@@ -185,34 +220,6 @@ if (SMPS_check == "y") {
   MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
   
 }
-
-# time calcs -----------
-##########################
-## We create a POSIXct date/time with the experiment date and entered desired start time. The difference 
-## between actual start time and desired start time is subtracted from every date/time.
-##########################
-
-# Ask user to enter an experiment reference start time in HH:MM:SS format. 
-# Ex: to start at 2 pm , enter 14:00:00. 
-time_plot <- readline(prompt="Reference time? For 00:00:00, press enter. For other time, enter as HH:MM:SS. ")
-
-if (time_plot == "\n") {
-  time_plot <- "00:00:00"
-}
-
-Time <- TimeSeries[2:numFiles+1]    # rename time series vector
-getDate <- as.Date(head(Time, n=1))    # get date of first datetime stamp
-date_time <- paste(getDate, time_plot)    # create a string with the experiment date and user entered start time
-refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time 
-difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual and desired start; seconds can be subtracted directly from POSIX class
-CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start      
-
-# gets the date of the files being analyzed from the reference date above
-date_str <- as.character(getDate)   # make the date a string
-split <- strsplit(date_str, "-")   # split the string at the -
-expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format
-split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
-path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
 
 # local time plots -----------
 ##########################
@@ -478,7 +485,7 @@ if (corrected_rainbow_plot == "yes") {
   # plot
   grid.newpage()
   par(mar= c(5, 2, 4, 2) + 0.1)
-  plot(Time_asHours, removed, xlab="Time", yaxt="n")    # no y-axis
+  plot(removed, xlab="Time", yaxt="n")    # no y-axis
   axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
   # add wavelength vector to corrected matrix
