@@ -591,29 +591,25 @@ if (save_graphs == "yes" ) {
 ##########################
 
 if (log_log_plot == "yes"){
-  
-  matrix_log <- matrix_corr    # create new matrix by copying the corrected spectra 
-  matrix_log[matrix_log < 0] <- NA    # set any value less than 0 to 0
-  matrix_log <- log(matrix_log)    # take natural log of entire matrix
-  matrix_log[is.infinite(matrix_log)] <- NA    # set any infinite (negative) value to 0 in order to take mean of each row
-  row_Means <- rowMeans(matrix_log[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
-  
+
+  matrix_ll <- matrix_corr[,-1]
+  row_Means_ll <- rowMeans(matrix_ll[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
+    
   # plot
-  #grid.newpage()    # make new page to plot on
   layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
     pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "log log.pdf"))
   }
-  
-  # plot this log/log matrix
-  matplot(matrix_log[,1], matrix_log[,-1], type="l", xlim = c(log(300), log(500)), ylim = c(log_ymin, log_ymax),
-          xlab="Log(Wavelength)", ylab="Log(Absorbance)", col = my.palette)
-  title(paste("Log(Absorbance) vs. Log(Wavelength) on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""))
+ 
+  # plot on a log-log axis
+  matplot(matrix_ll[,1], matrix_ll[,-1], type="l", xlim = c(300, 500), ylim = c(0.001, 0.1),
+          xlab="Wavelength (nm)", ylab="Absorbance", col = my.palette, log = "xy")
+  title(paste("Absorbance vs. Wavelength on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""))
   
   # add line of mean absorbance vs log wavelength
-  lines(matrix_log[,1], row_Means)   # line of wavelength versus mean
+  lines(matrix_ll[,1], row_Means_ll)
   
   # add color bar to plot 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
