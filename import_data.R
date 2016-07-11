@@ -9,26 +9,26 @@ PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
-save_graphs <- "no"
+save_graphs <- "yes"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 0.5   # standard deviation used to remove noisy spectra
+sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -6500
-MAC_ymax <- 7500
-corr_abs_ymin <- -0.07
-corr_abs_ymax <- 0.1
-rainbow_ymin <- -0.15
-rainbow_ymax <- 0.5
-log_ymin <- -10
-log_ymax <- 0.0000001
+MAC_ymin <- 0
+MAC_ymax <- 800
+corr_abs_ymin <- 0
+corr_abs_ymax <- 0.022
+rainbow_ymin <- -0.02
+rainbow_ymax <- 0.09
+log_ymin <- 0.0005   # this number must be larger than 0
+log_ymax <- 0.1
 
 # import -----------
 ##########################
@@ -357,7 +357,7 @@ if (corrected_rainbow_plot == "yes") {
     
     times[i-1] <- colnames(spectra_corr)[i]    # fill in matrix with times
     
-    if (mean(spectra_corr[920:1020,i]) > 5 * mean(spectra_corr[920:1020,2:num_cols]) | sd(spectra_corr[920:1020,i]) > sd_limit  ) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+    if (abs(mean(spectra_corr[920:1020,i])) > abs(5 * mean(spectra_corr[920:1020,2:num_cols]))) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
@@ -393,6 +393,7 @@ if (corrected_rainbow_plot == "yes") {
   
   # plot the matrix
   matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
+          main = paste("Corrected Absorbance on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
           xlab="Wavelength", ylab="Absorbance", col = my.palette) 
   
   # add color bar to plot 
