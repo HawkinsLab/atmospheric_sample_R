@@ -8,7 +8,7 @@
 PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
-log_log_plot <- "yes"
+log_log_plot <- "yes"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
 save_graphs <- "no"
 
 ##########################
@@ -16,19 +16,19 @@ save_graphs <- "no"
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 0.005   # standard deviation used to remove noisy spectra
+sd_limit <- 0.5   # standard deviation used to remove noisy spectra
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- 0
-MAC_ymax <- 1000
-corr_abs_ymin <- 0.0
-corr_abs_ymax <- 0.02
-rainbow_ymin <- -0.0
-rainbow_ymax <- 0.07
-log_ymin <- -8
-log_ymax <- 0
+MAC_ymin <- -6500
+MAC_ymax <- 7500
+corr_abs_ymin <- -0.07
+corr_abs_ymax <- 0.1
+rainbow_ymin <- -0.15
+rainbow_ymax <- 0.5
+log_ymin <- -10
+log_ymax <- 0.0000001
 
 # import -----------
 ##########################
@@ -347,33 +347,30 @@ if (rainbow_plot == "yes") {
 
 if (corrected_rainbow_plot == "yes") {
   
-  num_cols <- ncol(spectra_corr) - 1    # Number of columns to loop through
+  num_cols <- ncol(spectra_corr) - 1    # number of columns to loop through
   times <- vector(length=num_cols)    # empty vector for times
   removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
-  matrix_corr <- spectra_corr    # make new matrix filled with all the corrected spectra
-  index_log <- vector(length=0)
+  matrix_corr <- spectra_corr    # copy all of the spectra into a new matrix; wavelengths in first column 
+  index_log <- vector(length=0)   # empty matrix that will be used to store the indices of bad spectra
   
   for (i in 2:num_cols) {
     
     times[i-1] <- colnames(spectra_corr)[i]    # fill in matrix with times
     
-    if (mean(spectra_corr[920:1020,i]) > 3 * mean(spectra_corr[920:1020,2:num_cols])) {   # choose spectra with standard deviation over sd_limit
-      index_log <- append(index_log, i)
-      #matrix_corr <- matrix_corr[,-i]    # remove that spectrum from the matrix of all spectra
-      removed[i-1] <- 1    # assign 1 to removed time
+    if (mean(spectra_corr[920:1020,i]) > 5 * mean(spectra_corr[920:1020,2:num_cols]) | sd(spectra_corr[920:1020,i]) > sd_limit  ) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+      index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
+      removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
       removed[i-1] <- 0    # assign 0 to all other times
     }
   }
   
-  index_log_rev <- rev(index_log)
+  index_log_rev <- rev(index_log)   # reverse the order of the indices in the vector
+  # should add explanation of why these need to be reversed
   
   for (i in index_log_rev) {
-    matrix_corr <- matrix_corr[,-i]
+    matrix_corr <- matrix_corr[,-i]   # remove the bad spectra
   }
-  
-  # add wavelength vector to corrected matrix
-  matrix_corr <- cbind(spectra_corr[,1], matrix_corr)
   
   # plot
   grid.newpage()
@@ -505,6 +502,7 @@ qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="l
                 show.legend=FALSE) + theme_best() + 
                 scale_x_datetime(limits = c(CorrectedTime_Ref[1], CorrectedTime_Ref[numFiles]), expand = c(0, 0)) +
                 scale_y_continuous(limits = c(corr_abs_ymin, corr_abs_ymax), expand = c(0.001,0.001))
+# scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot3) 
 
 # turn off PDF save
@@ -525,6 +523,7 @@ if (SMPS_check == "y") {
                   show.legend=FALSE) + theme_best() + 
                   scale_x_datetime(limits = c(CorrectedTime_Ref[1], CorrectedTime_Ref[numFiles]), expand = c(0, 0)) +
                   scale_y_continuous(limits = c(MAC_ymin, MAC_ymax), expand = c(0.001,0.001))
+  # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
   print(qplot4) 
 }
 
@@ -543,7 +542,7 @@ if (save_graphs == "yes" ) {
   pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.pdf"))
 }
 
-# create a grob (grid graphical object) with the current date to add to plots 
+# create a grob (grid graphical object) with the current date to add as an annotation to plots 
 #date_grob = grobTree(textGrob(getDate, gp=gpar(col="black", fontsize=15, fontface="italic")))
 #x=0.1,  y=0.95, hjust=0
 
@@ -554,6 +553,7 @@ qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line",
                 show.legend=FALSE) + theme_best() + 
                 scale_x_datetime(limits = c(Time[1], Time[numFiles]), expand = c(0, 0)) +
                 scale_y_continuous(limits = c(corr_abs_ymin, corr_abs_ymax), expand = c(0.001,0.001))
+# scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot1) 
 
 # turn off PDF save
@@ -572,8 +572,9 @@ if (SMPS_check == "y") {
                   xlab="Local Time (Paris)", ylab=expression(paste(MAC[365], " (c", m^{2}, "/g OM)")),
                   main = paste("MAC at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
                   show.legend=FALSE) + theme_best() + 
-                  scale_x_datetime(limits = c(Time[1], Time[numFiles]), expand = c(0, 0)) +
+                  scale_x_datetime(limits = c(Time[1], Time[numFiles]), expand = c(0, 0)) + 
                   scale_y_continuous(limits = c(MAC_ymin, MAC_ymax), expand = c(0.001,0.001))
+  # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
   print(qplot2)
 }
 
@@ -592,8 +593,8 @@ if (save_graphs == "yes" ) {
 
 if (log_log_plot == "yes"){
 
-  matrix_ll <- matrix_corr[,-1]
-  row_Means_ll <- rowMeans(matrix_ll[,2:ncol(matrix_log)], na.rm = TRUE)    # take mean along rows (at each wavelength)
+  matrix_ll <- matrix_corr   # copy the spectra (with noisy ones removed) into a new matrix
+  row_Means_ll <- rowMeans(matrix_ll[,2:ncol(matrix_ll)], na.rm = TRUE)    # take the mean of all the absorbances at each wavelength 
     
   # plot
   layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
@@ -604,11 +605,11 @@ if (log_log_plot == "yes"){
   }
  
   # plot on a log-log axis
-  matplot(matrix_ll[,1], matrix_ll[,-1], type="l", xlim = c(300, 500), ylim = c(0.001, 0.1),
+  matplot(matrix_ll[,1], matrix_ll[,-1], type="l", xlim = c(300, 500), ylim = c(log_ymin, log_ymax),
           xlab="Wavelength (nm)", ylab="Absorbance", col = my.palette, log = "xy")
   title(paste("Absorbance vs. Wavelength on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""))
   
-  # add line of mean absorbance vs log wavelength
+  # add line of mean absorbance vs wavelength
   lines(matrix_ll[,1], row_Means_ll)
   
   # add color bar to plot 
