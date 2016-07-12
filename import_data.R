@@ -16,19 +16,19 @@ save_graphs <- "yes"
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 0.005   # standard deviation used to remove noisy spectra
+# sd_limit <- 0.005   # don't use this anymore
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -800
-MAC_ymax <- 5000
-corr_abs_ymin <- -0.005
+MAC_ymin <- -2000
+MAC_ymax <- 2500
+corr_abs_ymin <- -0.012
 corr_abs_ymax <- 0.022
-rainbow_ymin <- -0.025
-rainbow_ymax <- 0.25
-log_ymin <- 0.0005   # this number must be larger than 0
-log_ymax <- 0.1
+rainbow_ymin <- -0.1
+rainbow_ymax <- 0.14
+log_ymin <- 0.0004   # this number must be larger than 0
+log_ymax <- 0.05
 
 # import -----------
 ##########################
@@ -308,15 +308,15 @@ if (rainbow_plot == "yes") {
                            x <- as.numeric(x)
                            ((x[1]+x[2]/60) + (x[3]/3600)) })
   
+  # create a PDF file to save plot to
+  if (save_graphs == "yes" ) {
+    jpeg(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot.jpg"), res = 300, units = "in", width = 7, height = 5)
+  }
+  
   # plot
   #grid.newpage()    # create new page for plot
   layout(t(1:2), widths=c(10,2))    # set up the layout of the plot
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
-  
-  # create a PDF file to save plot to
-  if (save_graphs == "yes" ) {
-    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot.pdf"))
-  }
   
   matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
           xlab="Wavelength (nm)", ylab="Corrected Absorbance",
@@ -357,7 +357,7 @@ if (corrected_rainbow_plot == "yes") {
     #times[i-1] <- Time[i-1]    # fill in matrix with times
     #corr_times[i-1] <- CorrectedTime_Ref[i-1]
     
-    if (abs(mean(spectra_corr[920:1020,i])) > abs(5 * mean(spectra_corr[920:1020,2:num_cols]))) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+    if (abs(mean(spectra_corr[920:1020,i])) > abs(10 * mean(spectra_corr[920:1020,2:num_cols]))) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
@@ -372,9 +372,6 @@ if (corrected_rainbow_plot == "yes") {
   axis(2, at = seq(0, 1, by = 1), las=2)    # add y-axis
   
   #### Plots new matrix with same parameters as above 
-  
-  # layout to fit both plot & color bar legend
-  layout(t(1:2), widths=c(10,2))
   
   # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   my.palette <- rainbow(length(justTime[-1]), start=0, end=4/6)
@@ -397,8 +394,11 @@ if (corrected_rainbow_plot == "yes") {
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
-    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot corrected.pdf"))
+    jpeg(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "rainbow plot corrected.jpg"), res = 300, units = "in", width = 7, height = 5)
   }
+  
+  # layout to fit both plot & color bar legend
+  layout(t(1:2), widths=c(10,2))
   
   # plot the matrix
   matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
@@ -500,11 +500,6 @@ if (PTR_plot=="yes") {
 ## plots for BrCcorr and MAC at reference time 
 ##########################
 
-# create a PDF file to save plot to
-if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time revised.pdf"))
-}
-
 # corrected absorbance vs time series
 qplot3 <- qplot(corr_times, BrCcorr, colour ="red", geom="line",
                 xlab=paste("Time since ", format(Time[1], format =  "%H:%M:%S")), ylab="Corrected Absorbance at 365 nm",
@@ -515,15 +510,7 @@ qplot3 <- qplot(corr_times, BrCcorr, colour ="red", geom="line",
 # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot3) 
 
-# turn off PDF save
-if (save_graphs == "yes" ) {
-  dev.off()
-}
-
-# create a PDF file to save plot to
-if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time revised.pdf"))
-}
+ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time.jpeg"))
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
@@ -537,20 +524,12 @@ if (SMPS_check == "y") {
   print(qplot4) 
 }
 
-# turn off PDF save
-if (save_graphs == "yes" ) {
-  dev.off()
-}
+ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time.jpeg"))
 
 # local time plots -----------
 ##########################
 ## plot BrCcorr and MAC at local Paris time
 ##########################
-
-# create a PDF file to save plot to
-if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time revised.pdf"))
-}
 
 # create a grob (grid graphical object) with the current date to add as an annotation to plots 
 #date_grob = grobTree(textGrob(getDate, gp=gpar(col="black", fontsize=15, fontface="italic")))
@@ -566,15 +545,7 @@ qplot1 <- qplot(times, BrCcorr, colour="red", geom = "line",
 # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot1) 
 
-# turn off PDF save
-if (save_graphs == "yes" ) {
-  dev.off()
-}
-
-# create a PDF file to save plot to
-if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time revised.pdf"))
-}
+ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.jpeg"))
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
@@ -588,12 +559,7 @@ if (SMPS_check == "y") {
   print(qplot2)
 }
 
-# [2:numFiles+1]
-
-# turn off PDF save
-if (save_graphs == "yes" ) {
-  dev.off()
-}
+ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time.jpeg"))
 
 # log log -----------
 ##########################
@@ -605,15 +571,15 @@ if (log_log_plot == "yes"){
 
   matrix_ll <- matrix_corr   # copy the spectra (with noisy ones removed) into a new matrix
   row_Means_ll <- rowMeans(matrix_ll[,2:ncol(matrix_ll)], na.rm = TRUE)    # take the mean of all the absorbances at each wavelength 
-    
-  # plot
-  layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
-    pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "log log.pdf"))
+    jpeg(file = file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "log log.jpeg"), res = 300, width = 7, height = 5, units = "in")
   }
  
+  # plot
+  layout(t(1:2), widths=c(10,2))    # set up the layout of the graph
+  
   # plot on a log-log axis
   matplot(matrix_ll[,1], matrix_ll[,-1], type="l", xlim = c(300, 500), ylim = c(log_ymin, log_ymax),
           xlab="Wavelength (nm)", ylab="Absorbance", col = my.palette, log = "xy")
