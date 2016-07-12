@@ -21,12 +21,12 @@ sd_limit <- 0.005   # standard deviation used to remove noisy spectra
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- 0
-MAC_ymax <- 800
-corr_abs_ymin <- 0
+MAC_ymin <- -800
+MAC_ymax <- 5000
+corr_abs_ymin <- -0.005
 corr_abs_ymax <- 0.022
-rainbow_ymin <- -0.02
-rainbow_ymax <- 0.09
+rainbow_ymin <- -0.025
+rainbow_ymax <- 0.25
 log_ymin <- 0.0005   # this number must be larger than 0
 log_ymax <- 0.1
 
@@ -134,10 +134,6 @@ BrCcorr <- BrC365-BrCref #closer to actual signal we want
 # Ask user to enter an experiment reference start time in HH:MM:SS format. 
 # Ex: to start at 2 pm , enter 14:00:00. 
 #time_plot <- readline(prompt="Reference time? For 00:00:00, press enter. For other time, enter as HH:MM:SS. ")
-
-#if (time_plot == "\n") {
-#  time_plot <- "00:00:00"
-#}
 
 time_plot <- "00:00:00"
 
@@ -348,14 +344,18 @@ if (rainbow_plot == "yes") {
 if (corrected_rainbow_plot == "yes") {
   
   num_cols <- ncol(spectra_corr) - 1    # number of columns to loop through
-  times <- vector(length=num_cols)    # empty vector for times
+  times <- Time    # empty vector for times
+  corr_times <- CorrectedTime_Ref
   removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
   matrix_corr <- spectra_corr    # copy all of the spectra into a new matrix; wavelengths in first column 
   index_log <- vector(length=0)   # empty matrix that will be used to store the indices of bad spectra
+  BrCcorr <- BrCcorr[-1]
+  MAC <- MAC[-1]
   
   for (i in 2:num_cols) {
     
-    times[i-1] <- colnames(spectra_corr)[i]    # fill in matrix with times
+    #times[i-1] <- Time[i-1]    # fill in matrix with times
+    #corr_times[i-1] <- CorrectedTime_Ref[i-1]
     
     if (abs(mean(spectra_corr[920:1020,i])) > abs(5 * mean(spectra_corr[920:1020,2:num_cols]))) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
@@ -363,13 +363,6 @@ if (corrected_rainbow_plot == "yes") {
     } else {
       removed[i-1] <- 0    # assign 0 to all other times
     }
-  }
-  
-  index_log_rev <- rev(index_log)   # reverse the order of the indices in the vector
-  # should add explanation of why these need to be reversed
-  
-  for (i in index_log_rev) {
-    matrix_corr <- matrix_corr[,-i]   # remove the bad spectra
   }
   
   # plot
@@ -384,7 +377,23 @@ if (corrected_rainbow_plot == "yes") {
   layout(t(1:2), widths=c(10,2))
   
   # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
-  my.palette <- rainbow(length(justTime), start=0, end=4/6)
+  my.palette <- rainbow(length(justTime[-1]), start=0, end=4/6)
+  
+  index_log_rev <- rev(index_log)   # reverse the order of the indices in the vector
+  # should add explanation of why these need to be reversed
+  
+  for (i in index_log_rev) {
+    matrix_corr <- matrix_corr[,-i]   # remove the bad spectra
+    times <- times[-i]
+    corr_times <- corr_times[-i]
+    BrCcorr <- BrCcorr[-i]
+    MAC <- MAC[-i]
+    my.palette <- my.palette[-i]
+  }
+  
+  m <- length(MAC)
+  MAC <- MAC[-m]
+  BrCcorr <- BrCcorr[-m]
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
@@ -493,11 +502,11 @@ if (PTR_plot=="yes") {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time.pdf"))
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time revised.pdf"))
 }
 
 # corrected absorbance vs time series
-qplot3 <- qplot(CorrectedTime_Ref, BrCcorr[2:numFiles+1], colour ="red", geom="line",
+qplot3 <- qplot(corr_times, BrCcorr, colour ="red", geom="line",
                 xlab=paste("Time since ", format(Time[1], format =  "%H:%M:%S")), ylab="Corrected Absorbance at 365 nm",
                 main = paste("Corrected Absorbance at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
                 show.legend=FALSE) + theme_best() + 
@@ -513,12 +522,12 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time.pdf"))
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time revised.pdf"))
 }
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
-  qplot4 <- qplot(CorrectedTime_Ref, MAC[2:numFiles+1], colour ="red", geom="line",
+  qplot4 <- qplot(corr_times, MAC, colour ="red", geom="line",
                   xlab=paste("Time since", format(Time[1], format =  "%H:%M:%S")), ylab=expression(paste(MAC[365], " (c", m^{2}, "/g OM)")), 
                   main = paste("MAC at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
                   show.legend=FALSE) + theme_best() + 
@@ -540,7 +549,7 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.pdf"))
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time revised.pdf"))
 }
 
 # create a grob (grid graphical object) with the current date to add as an annotation to plots 
@@ -548,7 +557,7 @@ if (save_graphs == "yes" ) {
 #x=0.1,  y=0.95, hjust=0
 
 # corrected absorbance vs time series
-qplot1 <- qplot(Time, BrCcorr[2:numFiles+1], colour="red", geom = "line",
+qplot1 <- qplot(times, BrCcorr, colour="red", geom = "line",
                 xlab="Local Time (Paris)", ylab="Corrected Absorbance",
                 main = paste("Corrected Absorbance at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
                 show.legend=FALSE) + theme_best() + 
@@ -564,12 +573,12 @@ if (save_graphs == "yes" ) {
 
 # create a PDF file to save plot to
 if (save_graphs == "yes" ) {
-  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time.pdf"))
+  pdf(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time revised.pdf"))
 }
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
-  qplot2 <- qplot(Time, MAC[2:numFiles+1], colour="green", geom = "line",
+  qplot2 <- qplot(times, MAC, colour="green", geom = "line",
                   xlab="Local Time (Paris)", ylab=expression(paste(MAC[365], " (c", m^{2}, "/g OM)")),
                   main = paste("MAC at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
                   show.legend=FALSE) + theme_best() + 
@@ -579,7 +588,7 @@ if (SMPS_check == "y") {
   print(qplot2)
 }
 
-
+# [2:numFiles+1]
 
 # turn off PDF save
 if (save_graphs == "yes" ) {
