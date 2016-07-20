@@ -25,12 +25,12 @@ sd_limit <- 0.1   # don't use this anymore
 # Graphing paramters
 ##########################
 MAC_ymin <- -1000
-MAC_ymax <- 18000
-corr_abs_ymin <- -0.05
-corr_abs_ymax <- 0.1
+MAC_ymax <- 8000
+corr_abs_ymin <- -0.01
+corr_abs_ymax <- 0.08
 rainbow_ymin <- -0.1
-rainbow_ymax <- 0.18
-log_ymin <- 0.0005   # this number must be larger than 0
+rainbow_ymax <- 0.15
+log_ymin <- 0.001   # this number must be larger than 0
 log_ymax <- 0.1
 
 ##########################
@@ -448,6 +448,7 @@ if (corrected_rainbow_plot == "yes") {
     #times[i-1] <- Time[i-1]    # fill in matrix with times
     #corr_times[i-1] <- CorrectedTime_Ref[i-1]
     
+    #if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | (max(spectra_corr[920:1020,2:num_cols]) - min(spectra_corr[920:1020,2:num_cols])) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
     if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,2:num_cols]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
@@ -479,9 +480,9 @@ if (corrected_rainbow_plot == "yes") {
     my.palette <- my.palette[-i]
   }
   
-  m <- length(MAC)
-  MAC <- MAC[-m]
-  BrCcorr <- BrCcorr[-m]
+  #m <- length(MAC)
+  #MAC <- MAC[-m]
+  #BrCcorr <- BrCcorr[-m]
   
   #if (exp_baseline_correction == "no") {  }
   
@@ -612,7 +613,9 @@ qplot3 <- qplot(corr_times, BrCcorr, colour ="red", geom="line",
 # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot3) 
 
-ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time.jpeg"))
+if (save_graphs == "yes") {
+  ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs ref time.jpeg"))
+}
 
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
@@ -626,7 +629,10 @@ if (SMPS_check == "y") {
   print(qplot4) 
 }
 
-ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time.jpeg"))
+if (save_graphs == "yes") {
+  ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref time.jpeg"))
+}
+  
 
 # local time plots -----------
 ##########################
@@ -643,8 +649,10 @@ qplot1 <- qplot(times, BrCcorr, colour="red", geom = "line",
 # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
 print(qplot1) 
 
-ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.jpeg"))
-
+if (save_graphs == "yes") {
+  ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "corr abs vs real time.jpeg"))
+}
+  
 # MAC vs time series, only if you have access to SMPS file
 if (SMPS_check == "y") {
   qplot2 <- qplot(times, MAC, colour="green", geom = "line",
@@ -657,7 +665,9 @@ if (SMPS_check == "y") {
   print(qplot2)
 }
 
-ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time.jpeg"))
+if (save_graphs == "yes") {
+  ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs real time.jpeg"))
+}
 
 # log log -----------
 ##########################
