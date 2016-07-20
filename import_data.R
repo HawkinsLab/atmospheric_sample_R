@@ -1,5 +1,7 @@
 # Hawkins Lab Data Analysis
 
+rm( list = ls( all = TRUE ))
+
 ##########################
 # In order to decide which plots you would like to see, set these variables
 # to either yes or no before runnning the file.
@@ -9,26 +11,40 @@ PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
-save_graphs <- "yes"
+save_graphs <- "no"
+exp_baseline_correction <- "no"
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-# sd_limit <- 0.005   # don't use this anymore
+sd_limit <- 0.1   # don't use this anymore
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -2000
-MAC_ymax <- 2500
-corr_abs_ymin <- -0.012
-corr_abs_ymax <- 0.022
+MAC_ymin <- -1000
+MAC_ymax <- 18000
+corr_abs_ymin <- -0.05
+corr_abs_ymax <- 0.1
 rainbow_ymin <- -0.1
-rainbow_ymax <- 0.14
-log_ymin <- 0.0004   # this number must be larger than 0
-log_ymax <- 0.05
+rainbow_ymax <- 0.18
+log_ymin <- 0.0005   # this number must be larger than 0
+log_ymax <- 0.1
+
+##########################
+# Experiment time paramters
+##########################
+aerosol_used <- "AS + Glyoxal"
+aerosol_in <- "00:00:00"
+gas_used <- "MeAm"
+gas_in <- "00:00:00"
+cloud_start_1 <- "00:00:00"
+light_on <- "00:00:00"
+cloud_start_2 <- NA
+light_off <- "00:00:00"
+chamber_disconnect <- "00:00:00"
 
 # import -----------
 ##########################
@@ -113,17 +129,105 @@ data_matrixAll[,1] <- tempDframe$wavelength
 # Make the data in the TimeSeries vector into POSIXct time class (instead of original string)
 class(TimeSeries) <- c('POSIXt','POSIXct')
 
+# create new time vector of just times, but keeping the first time stamp as a placeholder
+justTime <- strftime(TimeSeries, format = "%H:%M:%S")
+
+# function to convert HH:MM:SS to hours in order to plot as legend
+Time_asHours <- sapply(strsplit(justTime,":"),
+                       function(x) {
+                         x <- as.numeric(x)
+                         ((x[1]+x[2]/60) + (x[3]/3600)) })
+
 # baseline calcs -----------
 ##########################
 # Choose the type of baseline correction to apply, and apply it.
 ##########################
 
-# Average the absorbance values from 360 to 370 to get an absorbance value for 365 nm
-BrC365 <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > 360 & data_matrixAll[,1] < 370))
 # Average the absorbance values around a reference point (that is set above)
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > (ref_wave - 5) & data_matrixAll[,1] < (ref_wave + 5)))
-# Remove effect of baseline drift by subtracting baseline absorbance from 365 nm absorbance
-BrCcorr <- BrC365-BrCref #closer to actual signal we want
+
+# create new matrix with same dimensions as data matrix
+spectra_init <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
+
+# rename columns using time series of just times 
+colnames(spectra_init) <- justTime
+
+# Fill spectra_corr with wavelength vector and corrected spectra
+spectra_init[,1] <- data_matrixAll[,1]    # put wavelengths in first column
+for (i in 2:(length(BrCref))){
+  # put corrected absorbances in other columns
+  spectra_init[,i] <- data_matrixAll[,i] - BrCref[i]
+}
+
+#Apply the time series baseline correction if desired
+if(exp_baseline_correction == "yes"){
+  
+  #This helper function is called in sapply below
+  subtracty <- function(x,y) {
+    out<- x-y }
+  
+  #start.index is the index of max absorbance in the first 2 hours (ignoring the first 20 minutes) at 302.39 nm (slightly arbitray)
+  #the reference wavelength could really be anything around 300. 500 is the row number for 302.39. 
+  #20:120 is the 20th minute to the 120th minute because a spectrum is taken every minute.
+  start.index <- which.max(spectra_init[500,20:120]) + 20 #add 20 because which.max will return the index of the shorted vector
+  
+  #This helper function will be called in the for loop below
+  #fit a logarithmic curve to 2 vectors and returns a vector of coefficients (and Rsquared) if the R squared of the y vs log(x) fit is greater than tolerance. otherwise, it returns false
+  log.drift <- function(y.vector,x.vector,tolerance,fnumber){
+    #first apply a lowess smoothing function to the time series so we give more weight to the overall trend (ie, the drift) and less weight to the signal
+    smooth.fit <- lowess(x.vector,y.vector,f=fnumber)
+    #fit smoothed y.vector to log(smoothed x.vector), y = factor*log(x.vector) + Constant
+    fit <-lm(smooth.fit$y~log(smooth.fit$x))
+    #If a y vs log(x) plot is pretty linear, then a large fraction of the variation in absorbance is explained
+    #with an logarithmic model of absorbance versus time, and we can be confident that drift is occuring.
+    r.squared.value <- summary(fit)$r.squared
+    drift.coef<-c(TRUE,fit$coefficients[1],fit$coefficients[2],r.squared.value)
+    #if(r.squared.value > tolerance && fit$coefficients[2]<0){
+    #  drift.coef<-c(TRUE,fit$coefficients[1],fit$coefficients[2],r.squared.value)
+    #  return(drift.coef)
+    #} else {
+    #  drift.coef <- FALSE
+    #  return(drift.coef)
+    #}
+  }
+  
+  #Because the seconds since 1970 get too big, my fit coefficients are too small, so I make the seconds smaller by referencing to the begining of the experiment. Add 1 cause log(0) = - infinity
+  time_since <- sapply(as.numeric(TimeSeries[start.index:length(TimeSeries)]),subtracty,y=as.numeric(TimeSeries[start.index])) + 1
+  #Make a matrix that will contain the fitted curve. Useful if you want to plot it along with the time series later
+  fit_info <- matrix(NA, nrow = numRows,ncol = numFiles +1)
+  spectra_corr <- matrix(NA, nrow = numRows, ncol = numFiles +1)
+  
+  #This for loop will fit a logarithmc curve to the time series at EACH wavelength. If the Rsquared for the y vs log(x) is over tolerance, than it will apply the correction
+  for(i in 1:numRows) {
+    #Test if the Rsquared is over tolerance (ie, if the change in absorbance is explained well by a logarithmic model).
+    drift.coef <- log.drift(y.vector=spectra_init[i,start.index:ncol(spectra_init)],x.vector=time_since,tolerance=0.01,fnumber=0.08)
+    
+    data_fit <- drift.coef[2]+drift.coef[3]*log(time_since)
+    spectra_corr[i,start.index:ncol(spectra_init)]<-spectra_init[i,start.index:ncol(spectra_init)]-data_fit
+    #store data_fit in the corresponding row of the matrix fitted_data, and store the rsquared value in the first column
+    fit_info[i,1] <- drift.coef[4]
+    fit_info[i,start.index:ncol(spectra_corr)] <- data_fit
+    
+    #if(drift.coef[1]==TRUE){
+    #  #If the criterium for Rsquared is met, then apply the time series baseline correction
+    #  #Apply the correction by subtracting out the model
+    #  data_fit <- drift.coef[2]+drift.coef[3]*log(time_since)
+    #  spectra_corr[i,start.index:ncol(spectra_init)]<-spectra_init[i,start.index:ncol(spectra_init)]-data_fit
+    #  #store data_fit in the corresponding row of the matrix fitted_data, and store the rsquared value in the first column
+    #  fit_info[i,1] <- drift.coef[4]
+    #  fit_info[i,start.index:ncol(spectra_corr)] <- data_fit
+    #} else {
+    #  #If the criterium for Rsquared isn't met, then just put the prelim_baseline_matrix value into baseline_corrected_matrix
+    #  spectra_corr[i,start.index:ncol(spectra_init)] <- spectra_init[i,start.index:ncol(spectra_init)]
+    #}
+  }
+  spectra_corr[,1:(start.index-1)] <- spectra_init[,1:(start.index-1)]
+} else {
+  spectra_corr <- spectra_init
+}
+
+# Average the absorbance values from 360 to 370 to get an absorbance value for 365 nm
+BrCcorr <- colMeans(subset(spectra_corr,spectra_corr[,1] > 360 & spectra_corr[,1] < 370))
 
 # time calcs -----------
 ##########################
@@ -150,6 +254,14 @@ split <- strsplit(date_str, "-")   # split the string at the -
 expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format
 split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
 path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
+
+aerosol_in <- as.POSIXct(paste(date_str, aerosol_in, "CEST", sep = " "))
+gas_in <- as.POSIXct(paste(date_str, gas_in, "CEST", sep = " "))
+cloud_start_1 <- as.POSIXct(paste(date_str, cloud_start_1, "CEST", sep = " "))
+light_on <- as.POSIXct(paste(date_str, light_on, "CEST", sep = " "))
+cloud_start_2 <- as.POSIXct(paste(date_str, cloud_start_2, "CEST", sep = " "))
+light_off <- as.POSIXct(paste(date_str, light_off, "CEST", sep = " "))
+chamber_disconnect <- as.POSIXct(paste(date_str, chamber_disconnect, "CEST", sep = " "))
 
 # SMPS calcs -----------
 ##########################
@@ -286,27 +398,6 @@ library("maps")
 library("spam")
 
 if (rainbow_plot == "yes") {
-  # create new time vector of just times, but keeping the first time stamp as a placeholder
-  justTime <- strftime(TimeSeries, format = "%H:%M:%S")
-  
-  # create new matrix with same dimensions as data matrix
-  spectra_corr <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
-  
-  # rename columns using time series of just times 
-  colnames(spectra_corr) <- justTime
-  
-  # Fill spectra_corr with wavelength vector and corrected spectra
-  spectra_corr[,1] <- data_matrixAll[,1]    # put wavelengths in first column
-  for (i in 2:(length(BrCref))){
-    # put corrected absorbances in other columns
-    spectra_corr[,i] <- data_matrixAll[,i] - BrCref[i]
-  }
-  
-  # function to convert HH:MM:SS to hours in order to plot as legend
-  Time_asHours <- sapply(strsplit(justTime,":"),
-                         function(x) {
-                           x <- as.numeric(x)
-                           ((x[1]+x[2]/60) + (x[3]/3600)) })
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
@@ -314,7 +405,7 @@ if (rainbow_plot == "yes") {
   }
   
   # plot
-  #grid.newpage()    # create new page for plot
+  grid.newpage()    # create new page for plot
   layout(t(1:2), widths=c(10,2))    # set up the layout of the plot
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   
@@ -343,8 +434,8 @@ if (rainbow_plot == "yes") {
 
 if (corrected_rainbow_plot == "yes") {
   
-  num_cols <- ncol(spectra_corr) - 1    # number of columns to loop through
-  times <- Time    # empty vector for times
+  num_cols <- ncol(spectra_corr)    # number of columns to loop through
+  times <- Time    
   corr_times <- CorrectedTime_Ref
   removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
   matrix_corr <- spectra_corr    # copy all of the spectra into a new matrix; wavelengths in first column 
@@ -357,7 +448,7 @@ if (corrected_rainbow_plot == "yes") {
     #times[i-1] <- Time[i-1]    # fill in matrix with times
     #corr_times[i-1] <- CorrectedTime_Ref[i-1]
     
-    if (abs(mean(spectra_corr[920:1020,i])) > abs(10 * mean(spectra_corr[920:1020,2:num_cols]))) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+    if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,2:num_cols]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
@@ -391,6 +482,8 @@ if (corrected_rainbow_plot == "yes") {
   m <- length(MAC)
   MAC <- MAC[-m]
   BrCcorr <- BrCcorr[-m]
+  
+  #if (exp_baseline_correction == "no") {  }
   
   # create a PDF file to save plot to
   if (save_graphs == "yes" ) {
@@ -495,6 +588,14 @@ if (PTR_plot=="yes") {
     
   }} # end of check for PTR plots
 
+# create annotations -----------
+
+# create a grob (grid graphical object) with the current date to add as an annotation to plots 
+#date_grob = grobTree(textGrob(getDate, gp=gpar(col="black", fontsize=15, fontface="italic")))
+#x=0.1,  y=0.95, hjust=0
+
+# get the indices corresponding the times of the events
+
 # ref time plots -----------
 ##########################
 ## plots for BrCcorr and MAC at reference time 
@@ -502,9 +603,10 @@ if (PTR_plot=="yes") {
 
 # corrected absorbance vs time series
 qplot3 <- qplot(corr_times, BrCcorr, colour ="red", geom="line",
-                xlab=paste("Time since ", format(Time[1], format =  "%H:%M:%S")), ylab="Corrected Absorbance at 365 nm",
+                xlab=paste("Time since ", format(Time[1], format = "%H:%M:%S")), ylab="Corrected Absorbance at 365 nm",
                 main = paste("Corrected Absorbance at 365 nm on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
-                show.legend=FALSE) + theme_best() + 
+                show.legend=FALSE) + theme_best() +
+                #annotate("text", x = aerosol_in, y = 0.015, label = aerosol_used) + 
                 scale_x_datetime(limits = c(CorrectedTime_Ref[1], CorrectedTime_Ref[numFiles]), expand = c(0, 0)) +
                 scale_y_continuous(limits = c(corr_abs_ymin, corr_abs_ymax), expand = c(0.001,0.001))
 # scale_x_datetime and scale_y_continuous force the axes to intersect at the limits (aka it removes the offset from 0)
@@ -530,10 +632,6 @@ ggsave(file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC vs ref 
 ##########################
 ## plot BrCcorr and MAC at local Paris time
 ##########################
-
-# create a grob (grid graphical object) with the current date to add as an annotation to plots 
-#date_grob = grobTree(textGrob(getDate, gp=gpar(col="black", fontsize=15, fontface="italic")))
-#x=0.1,  y=0.95, hjust=0
 
 # corrected absorbance vs time series
 qplot1 <- qplot(times, BrCcorr, colour="red", geom = "line",
