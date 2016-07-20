@@ -11,7 +11,7 @@ PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "yes"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
-save_graphs <- "no"
+save_graphs <- "yes"
 exp_baseline_correction <- "no"
 
 ##########################
@@ -24,14 +24,14 @@ sd_limit <- 0.1   # don't use this anymore
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -1000
-MAC_ymax <- 8000
-corr_abs_ymin <- -0.01
-corr_abs_ymax <- 0.08
-rainbow_ymin <- -0.1
-rainbow_ymax <- 0.15
-log_ymin <- 0.001   # this number must be larger than 0
-log_ymax <- 0.1
+MAC_ymin <- -2000
+MAC_ymax <- 2500
+corr_abs_ymin <- -0.015
+corr_abs_ymax <- 0.012
+rainbow_ymin <- -0.08
+rainbow_ymax <- 0.18
+log_ymin <- 0.0005   # this number must be larger than 0
+log_ymax <- 0.01
 
 ##########################
 # Experiment time paramters
@@ -327,6 +327,8 @@ if (SMPS_check == "y") {
   # calculate MAC at 365 nm using baseline-corrected absorbance  
   MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
   
+  #spectra_corr[,2:(numFiles + 1)] <- spectra_corr[,2:(numFiles + 1)]*2014286/InterSMPS$y
+  
 }
 
 # create new theme -----------
@@ -480,9 +482,9 @@ if (corrected_rainbow_plot == "yes") {
     my.palette <- my.palette[-i]
   }
   
-  #m <- length(MAC)
-  #MAC <- MAC[-m]
-  #BrCcorr <- BrCcorr[-m]
+  m <- length(MAC)
+  MAC <- MAC[-m]
+  BrCcorr <- BrCcorr[-m]
   
   #if (exp_baseline_correction == "no") {  }
   
