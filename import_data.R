@@ -306,7 +306,7 @@ if (SMPS_check == "y") {
   # format SMPS data
   #### following note seems to be irrelevant as written, with colnames removed
   #### NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
-  SMPS <- read.csv(SMPS_testFile, skip = 17, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
+  SMPS <- read.csv(SMPS_testFile, skip = 19, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
   SMPS_conc <- as.numeric(as.character(SMPS$V140 ))    # total concentration, need to convert to class form 
   SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")
   SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
