@@ -19,19 +19,19 @@ exp_baseline_correction <- "no"
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 0.1   # don't use this anymore
+sd_limit <- 100   
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -2000
+MAC_ymin <- -400
 MAC_ymax <- 2500
-corr_abs_ymin <- -0.015
-corr_abs_ymax <- 0.012
-rainbow_ymin <- -0.08
-rainbow_ymax <- 0.18
-log_ymin <- 0.0005   # this number must be larger than 0
-log_ymax <- 0.01
+corr_abs_ymin <- -0.05
+corr_abs_ymax <- 0.33
+rainbow_ymin <- -1100
+rainbow_ymax <- 5500
+log_ymin <- 2   # this number must be larger than 0
+log_ymax <- 8000
 
 ##########################
 # Experiment time paramters
@@ -307,7 +307,7 @@ if (SMPS_check == "y") {
   #### following note seems to be irrelevant as written, with colnames removed
   #### NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
   SMPS <- read.csv(SMPS_testFile, skip = 17, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
-  SMPS_conc <- as.numeric(as.character(SMPS$V136 ))    # total concentration, need to convert to class form 
+  SMPS_conc <- as.numeric(as.character(SMPS$V140 ))    # total concentration, need to convert to class form 
   SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")
   SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
   
@@ -327,9 +327,18 @@ if (SMPS_check == "y") {
   # calculate MAC at 365 nm using baseline-corrected absorbance  
   MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
   
-  #spectra_corr[,2:(numFiles + 1)] <- spectra_corr[,2:(numFiles + 1)]*2014286/InterSMPS$y
-  
+  for (i in 2:(numFiles+1)) {
+    spectra_corr[,i] <- spectra_corr[,i]*2014286/InterSMPS$y[i]
+  }
 }
+
+l <- dim(spectra_corr)[2]
+spectra_corr <- spectra_corr[,-l]
+spectra_corr <- spectra_corr[,-(l-1)]
+spectra_corr <- spectra_corr[,-(l-2)]
+spectra_corr <- spectra_corr[,-(l-3)]
+spectra_corr <- spectra_corr[,-(l-4)]
+spectra_corr <- spectra_corr[,-(l-5)]
 
 # create new theme -----------
 
@@ -412,8 +421,8 @@ if (rainbow_plot == "yes") {
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   
   matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
-          xlab="Wavelength (nm)", ylab="Corrected Absorbance",
-          main = paste("Corrected Absorbance on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
+          xlab="Wavelength (nm)", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g)")),
+          main = paste("Absorptivity on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
           col = my.palette) 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
              legend.only=TRUE, horizontal = FALSE, col=my.palette, legend.lab="Local Time")   # add color bar to plot 
@@ -447,11 +456,8 @@ if (corrected_rainbow_plot == "yes") {
   
   for (i in 2:num_cols) {
     
-    #times[i-1] <- Time[i-1]    # fill in matrix with times
-    #corr_times[i-1] <- CorrectedTime_Ref[i-1]
-    
     #if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | (max(spectra_corr[920:1020,2:num_cols]) - min(spectra_corr[920:1020,2:num_cols])) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
-    if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,2:num_cols]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+    if (abs(mean(spectra_corr[920:1020,i])) > abs(20 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,i]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
@@ -498,8 +504,8 @@ if (corrected_rainbow_plot == "yes") {
   
   # plot the matrix
   matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
-          main = paste("Corrected Absorbance on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
-          xlab="Wavelength", ylab="Absorbance", col = my.palette) 
+          main = paste("Absorptivity on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
+          xlab="Wavelength", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g)")), col = my.palette) 
   
   # add color bar to plot 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
