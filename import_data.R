@@ -10,8 +10,8 @@ rm( list = ls( all = TRUE ))
 PTR_plot <- "no"
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
-log_log_plot <- "yes"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
-save_graphs <- "yes"
+log_log_plot <- "no"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
+save_graphs <- "no"
 exp_baseline_correction <- "no"
 
 ##########################
@@ -19,19 +19,19 @@ exp_baseline_correction <- "no"
 # and do not change the variables lower in the script.
 ##########################
 ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 100   
+sd_limit <- 1500   
 
 ##########################
 # Graphing paramters
 ##########################
-MAC_ymin <- -400
-MAC_ymax <- 2500
-corr_abs_ymin <- -0.05
-corr_abs_ymax <- 0.33
-rainbow_ymin <- -1100
-rainbow_ymax <- 5500
-log_ymin <- 2   # this number must be larger than 0
-log_ymax <- 8000
+MAC_ymin <- -1000
+MAC_ymax <- 25000
+corr_abs_ymin <- -0.005
+corr_abs_ymax <- 0.4
+rainbow_ymin <- -15000
+rainbow_ymax <- 25000
+log_ymin <- 50   # this number must be larger than 0
+log_ymax <- 1000000
 
 ##########################
 # Experiment time paramters
@@ -332,6 +332,7 @@ if (SMPS_check == "y") {
   }
 }
 
+# only use this section for July 4th
 l <- dim(spectra_corr)[2]
 spectra_corr <- spectra_corr[,-l]
 spectra_corr <- spectra_corr[,-(l-1)]
@@ -421,7 +422,7 @@ if (rainbow_plot == "yes") {
   my.palette <- rainbow(length(justTime), start=0, end=4/6)      # create rainbow colors with length of time vector, from red (start=0) to blue (end=4/6)
   
   matplot(spectra_corr[,1], spectra_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
-          xlab="Wavelength (nm)", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g)")),
+          xlab="Wavelength (nm)", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g OM)")),
           main = paste("Absorptivity on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
           col = my.palette) 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
@@ -448,7 +449,7 @@ if (corrected_rainbow_plot == "yes") {
   num_cols <- ncol(spectra_corr)    # number of columns to loop through
   times <- Time    
   corr_times <- CorrectedTime_Ref
-  removed <- vector(length=num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
+  removed <- vector(length = num_cols)     # assigns 0 or 1 to each time depending on whether or not it is removed
   matrix_corr <- spectra_corr    # copy all of the spectra into a new matrix; wavelengths in first column 
   index_log <- vector(length=0)   # empty matrix that will be used to store the indices of bad spectra
   BrCcorr <- BrCcorr[-1]
@@ -457,7 +458,7 @@ if (corrected_rainbow_plot == "yes") {
   for (i in 2:num_cols) {
     
     #if (abs(mean(spectra_corr[920:1020,i])) > abs(3 * mean(spectra_corr[920:1020,2:num_cols])) | (max(spectra_corr[920:1020,2:num_cols]) - min(spectra_corr[920:1020,2:num_cols])) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
-    if (abs(mean(spectra_corr[920:1020,i])) > abs(20 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,i]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
+    if (abs(mean(spectra_corr[920:1020,i])) > abs(12 * mean(spectra_corr[920:1020,2:num_cols])) | sd(spectra_corr[920:1020,i]) > sd_limit) {   # choose spectra with absorbances (averaged over 390 and 410 nm) with magnitudes 3+ times greater than the average of all spectra over that range; this is because bubbles have much greater magnitude "signal"
       index_log <- append(index_log, i)   # add the index of the bad spectrum to our log of indices
       removed[i-1] <- 1    # assign 1 to the removed time log
     } else {
@@ -505,7 +506,7 @@ if (corrected_rainbow_plot == "yes") {
   # plot the matrix
   matplot(matrix_corr[,1], matrix_corr[,-1], type="l", xlim=c(300,700), ylim=c(rainbow_ymin, rainbow_ymax), 
           main = paste("Absorptivity on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""),
-          xlab="Wavelength", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g)")), col = my.palette) 
+          xlab="Wavelength (nm)", ylab=expression(paste("Absorptivity", " (c", m^{2}, "/g OM)")), col = my.palette) 
   
   # add color bar to plot 
   image.plot(smallplot= c(.99,1,0.1,.9), zlim=c(Time_asHours[2],Time_asHours[length(Time_asHours)]), 
@@ -698,8 +699,8 @@ if (log_log_plot == "yes"){
   
   # plot on a log-log axis
   matplot(matrix_ll[,1], matrix_ll[,-1], type="l", xlim = c(300, 500), ylim = c(log_ymin, log_ymax),
-          xlab="Wavelength (nm)", ylab="Absorbance", col = my.palette, log = "xy")
-  title(paste("Absorbance vs. Wavelength on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""))
+          xlab="Wavelength (nm)", ylab="Absorptivity", col = my.palette, log = "xy")
+  title(paste("Absorptivity vs. Wavelength on ", split[[1]][2], "/", split[[1]][3], "/", split[[1]][1], sep = ""))
   
   # add line of mean absorbance vs wavelength
   lines(matrix_ll[,1], row_Means_ll)
