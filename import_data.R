@@ -1,13 +1,16 @@
+# Elyse: check lines 115 and 117, that might fix all the indexing issues
+
+
 # Hawkins Lab Data Analysis
 
-rm( list = ls( all = TRUE ))
+rm( list = ls( all = TRUE ))   # removes all of the information from the previous file so that there's no combination of data from different days caused by unseen errors
 
 ##########################
 # In order to decide which plots you would like to see, set these variables
 # to either yes or no before runnning the file.
 ##########################
 
-PTR_plot <- "no"
+PTR_plot <- "no"   # this part has not been formatted yet
 rainbow_plot <- "yes"
 corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is no
 log_log_plot <- "no"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
@@ -18,8 +21,8 @@ exp_baseline_correction <- "no"
 # These variables can be changed. Please change the values with the variables here
 # and do not change the variables lower in the script.
 ##########################
-ref_wave <- 550   # reference wavelength subtracted to correct baseline drift
-sd_limit <- 1500   
+ref_wave <- 550   # preliminary baseline correction; the absorbance value at this wavelength will be subtracted from absorbances at all other wavelengths
+sd_limit <- 1500   # the maximum standard deviation allowed over the wavelengths __ to __ in a spectrum before it is considered a bubble/noisy spectrum and removed
 
 ##########################
 # Graphing paramters
@@ -35,6 +38,7 @@ log_ymax <- 1000000
 
 ##########################
 # Experiment time paramters
+# this would be used to add annotations to the graphs, but it currently does not work
 ##########################
 aerosol_used <- "AS + Glyoxal"
 aerosol_in <- "00:00:00"
@@ -94,6 +98,8 @@ data_to_dframe <- function(file, wl_low=170, wl_high=900) {
 # Choose the data to import and format it correctly.
 ##########################
 
+# tcltk is the package that brings up the dialogue box to choose absorbance spectra
+# these 2 lines load and open the package
 require(tcltk)
 library(tcltk)
 
@@ -101,18 +107,17 @@ library(tcltk)
 SpectraFolder <- tk_choose.dir(default = "", caption = "Select directory for absorbance spectra files")
 
 # Get the names of the data files (including the full path) and how many files there are
-files <- list.files(path=SpectraFolder, full.names=TRUE) # see full.names=TRUE
+files <- list.files(path=SpectraFolder, full.names=TRUE)
 numFiles <- length(files)
-# number of rows hard coded in
-numRows <- 3648
+numRows <- 3648   # number of rows hard coded in
 
 # Make a matrix (currently an empty placeholder) that will store all the spectra and wavelengths
-data_matrixAll <- matrix(NA,nrow=numRows,ncol=numFiles+1)
+data_matrixAll <- matrix( NA, nrow=numRows, ncol=numFiles+1 )
 # Make a vector (currently an empty placeholder) that will store all the times
 TimeSeries <- vector(length=numFiles+1)
 
-i <- 1
-for(file in files) {
+i <- 1   # need to start the indexing at 1
+for(file in files) {   # go through this loop for each file
   # Put the wavelengths, absorbance data, and time from one file into a temporary 2-column data frame
   tempDframe <- data_to_dframe(f=file) 
   # Put the absorbance data from this file into the full data-containing matrix
