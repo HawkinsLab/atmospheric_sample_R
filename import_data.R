@@ -16,6 +16,7 @@ corrected_rainbow_plot <- "yes"    # cannot mark this as yes if rainbow_plot is 
 log_log_plot <- "no"    # cannot mark this as yes if rainbow_plot & corrected_rainbow_plot are no
 save_graphs <- "no"
 exp_baseline_correction <- "no"
+#### also look around line 353
 
 ##########################
 # These variables can be changed. Please change the values with the variables here
@@ -137,7 +138,7 @@ class(TimeSeries) <- c('POSIXt','POSIXct')
 # create new time vector of just times, but keeping the first time stamp as a placeholder
 justTime <- strftime(TimeSeries, format = "%H:%M:%S")
 
-# function to convert HH:MM:SS to hours in order to plot as legend
+# function to convert HH:MM:SS of justTime to hours in order to plot as legend
 Time_asHours <- sapply(strsplit(justTime,":"),
                        function(x) {
                          x <- as.numeric(x)
@@ -148,23 +149,23 @@ Time_asHours <- sapply(strsplit(justTime,":"),
 # Choose the type of baseline correction to apply, and apply it.
 ##########################
 
-# Average the absorbance values around a reference point (that is set above)
+# Average the absorbance values around the reference wavelength
 BrCref <- colMeans(subset(data_matrixAll,data_matrixAll[,1] > (ref_wave - 5) & data_matrixAll[,1] < (ref_wave + 5)))
 
 # create new matrix with same dimensions as data matrix
 spectra_init <- matrix(NA, nrow=numRows, ncol=numFiles+1)   
 
-# rename columns using time series of just times 
+# rename columns so that each column (file) is labelled by the timestamp of the file
 colnames(spectra_init) <- justTime
 
-# Fill spectra_corr with wavelength vector and corrected spectra
+# fill spectra_init with wavelength vector and corrected (ref wavelength subtracted) spectra
 spectra_init[,1] <- data_matrixAll[,1]    # put wavelengths in first column
-for (i in 2:(length(BrCref))){
+for (i in 2:(length(BrCref))) {
   # put corrected absorbances in other columns
   spectra_init[,i] <- data_matrixAll[,i] - BrCref[i]
 }
 
-#Apply the time series baseline correction if desired
+# apply the time series baseline correction if desired
 if(exp_baseline_correction == "yes"){
   
   #This helper function is called in sapply below
@@ -240,26 +241,32 @@ BrCcorr <- colMeans(subset(spectra_corr,spectra_corr[,1] > 360 & spectra_corr[,1
 ## between actual start time and desired start time is subtracted from every date/time.
 ##########################
 
+# this is commented out because I'm assuming we wouldn't want to use any reference time besides t = 0
 # Ask user to enter an experiment reference start time in HH:MM:SS format. 
 # Ex: to start at 2 pm , enter 14:00:00. 
 #time_plot <- readline(prompt="Reference time? For 00:00:00, press enter. For other time, enter as HH:MM:SS. ")
 
+# this assumes that you want to make plots starting at t = 0 
 time_plot <- "00:00:00"
 
 Time <- TimeSeries[2:numFiles+1]    # rename time series vector
-getDate <- as.Date(head(Time, n=1))    # get date of first datetime stamp
-date_time <- paste(getDate, time_plot)    # create a string with the experiment date and user entered start time
-refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time 
-difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual and desired start; seconds can be subtracted directly from POSIX class
-CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start      
 
-# gets the date of the files being analyzed from the reference date above
+# make new vector of times starting at reference time
+getDate <- as.Date(head(Time, n=1))    # get date (without time) of first datetime
+date_time <- paste(getDate, time_plot)    # create a string with the experiment date and start time = 0 or whatever the user entered
+refTime <- as.POSIXct(date_time)    # convert to POSIXct date / time 
+difference <- as.numeric(difftime(head(Time, n=1), refTime), units="secs")    # difference between actual start time and desired start time; seconds can be subtracted directly from POSIX class
+CorrectedTime_Ref <- Time - difference    # new referenced times; original time vector minus the difference between actual and desired start times      
+
+# gets the date (not time) of the files being analyzed (for later naming purposes) from the reference date above
 date_str <- as.character(getDate)   # make the date a string
 split <- strsplit(date_str, "-")   # split the string at the -
-expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format
-split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path - split into pieces - of the computer that this code is being run on
+expt_date <- paste("16", split[[1]][2], split[[1]][3], sep = "")   # puts the date in YYMMDD format; assumes year is 2016
+split_path <- strsplit(getwd(), split = .Platform$file.sep)   # gets the path (split into pieces) of the computer that this code is being run on; can be used on Macs or Windows
 path_prelim <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "Preliminary Graphs"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
 
+# this is turning the events' times into POSIXct objects
+# would be used to annotate the graph, but that hasn't happened yet
 aerosol_in <- as.POSIXct(paste(date_str, aerosol_in, "CEST", sep = " "))
 gas_in <- as.POSIXct(paste(date_str, gas_in, "CEST", sep = " "))
 cloud_start_1 <- as.POSIXct(paste(date_str, cloud_start_1, "CEST", sep = " "))
@@ -273,11 +280,18 @@ chamber_disconnect <- as.POSIXct(paste(date_str, chamber_disconnect, "CEST", sep
 # Ask for SMPS data. If it exists, read it in and format it correctly in a data
 # frame, then interpolate so that we can get data points at the times we sampled at.
 # Calculate MAC at 365 nm.
+# This section assumes that you have all necessary SMPS files and they're in raw
+# format. Will have to uncomment sections if you want to be able to say you don't
+# have SMPS data or if you have processed-format SMPS files
 ##########################
 
-path_prelim_SMPS <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "SMPS"), sep = "")   # concatenate the computer's user and the Dropbox folders to save to
+# get beginning of the path of the SMPS file to use
+path_prelim_SMPS <- paste(.Platform$file.sep, file.path(split_path[[1]][2], split_path[[1]][3], "Dropbox (Hawkins Research Lab)", "Hawkins Research Lab Team Folder", "Paris CESAM study 2016", "SMPS"), sep = "")   # concatenate the computer's user and the Dropbox folders that the SMPS data is saved to
+
+# assumes you have a raw SMPS file in the correct location
 SMPS_check <- "y"
 
+# if you want the user to be able to choose whether to use 
 #SMPS_check <- readline(prompt="Do you have SMPS file corresponding to Daily Spectra? y or n: ")
 
 #if (SMPS_check == "y"){
@@ -304,25 +318,25 @@ SMPS_check <- "y"
 #&& SMPS_analysis_type == "r"
 if (SMPS_check == "y") {
   
-  # read in SMPS raw data by allowing user to select the file
-  SMPS_testFile <- file.path(path_prelim_SMPS, paste("CESAM_", expt_date, "_SMPS.txt", sep=""))
-  #SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")
+  # read in SMPS raw data
+  SMPS_testFile <- file.path(path_prelim_SMPS, paste("CESAM_", expt_date, "_SMPS.txt", sep=""))   # makes path using path starter above
+  #SMPS_testFile <- tk_choose.files(default="",caption="Select a raw SMPS file")   # use this if you want the user to choose where to get the SMPS file from
   
   # format SMPS data
-  #### following note seems to be irrelevant as written, with colnames removed
+  #### following note seems to be irrelevant as written, with colnames removed; kept it because I (Elyse) didn't write it
   #### NOTE: This assumes length of file is 136, thus including all the columns because otherwise it would think there were only 2 columns
-  SMPS <- read.csv(SMPS_testFile, skip = 19, header = FALSE, sep="\t", fill=TRUE)   #col.names = paste0(seq_len(136))
-  SMPS_conc <- as.numeric(as.character(SMPS$V140 ))    # total concentration, need to convert to class form 
-  SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")
-  SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)
+  SMPS <- read.csv(SMPS_testFile, skip = 19, header = FALSE, sep="\t", fill=TRUE)   # puts SMPS data into a data fram; skips the header lines (19 of them); tab-separated data file; fill=TRUE means we can input lines of different length; header=FALSE means the first line isn't a row of column names
+  SMPS_conc <- as.numeric(as.character(SMPS$V140 ))    # total concentration; converts character into a number
+  SMPS_datetime<- as.POSIXct(paste(SMPS$V2, SMPS$V3), format="%m/%d/%y %H:%M")   # convert date and time columns to POSIXct class datetime
+  SMPS.df <- data.frame(SMPS_datetime, SMPS_conc)   # make a 2 column data frame from the datetimes and SMPS concentrations
   
   # check if line 15 column 2 is "dw/dlogDp"
-  if (SMPS$V2[15]=="dw/dlogDp"){
+  if (SMPS$V2[15]=="dw/dlogDp") {
     num <- grepl("^[0-9]",SMPS$V1)    # if this is true, find all the lines starting with a number
-    SMPS.df <- SMPS.df[num,]        # update date frame to just include lines starting with a number
+    SMPS.df <- SMPS.df[num,]        # update date frame to only include lines starting with a number
     } 
   
-  # use the approx function to interpolate
+  # use the approx function to interpolate SMPS data to match the times of the spectra
   InterSMPS <- approx(SMPS.df$SMPS_datetime, SMPS.df$SMPS_conc, TimeSeries, method = "linear", rule = 1, f = 0, ties = mean)
   
 }
@@ -330,10 +344,10 @@ if (SMPS_check == "y") {
 if (SMPS_check == "y") {
 
   # calculate MAC at 365 nm using baseline-corrected absorbance  
-  MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook
+  MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook, updated for 2016's values
   
   for (i in 2:(numFiles+1)) {
-    spectra_corr[,i] <- spectra_corr[,i]*2014286/InterSMPS$y[i]
+    spectra_corr[,i] <- spectra_corr[,i]*2014286/InterSMPS$y[i]   # also convert the spectra from absorbance measurements to absorptivity
   }
 }
 
@@ -347,6 +361,10 @@ spectra_corr <- spectra_corr[,-(l-4)]
 spectra_corr <- spectra_corr[,-(l-5)]
 
 # create new theme -----------
+##########################
+# Make a new theme that dictates how graphs look.
+# Trying to replicate Igor's graphing style.
+##########################
 
 require(ggplot2)
 require(grid)
@@ -406,7 +424,7 @@ theme_best <- function(base_size = 12, base_family = "Helvetica") {
 
 # rainbow -----------
 ##########################
-# Rainbow plot -- Absorbance versus wavelength for each time
+# Rainbow plot -- Absorptivity versus wavelength for each time
 # Plots only if user has SMPS file
 ##########################
 
