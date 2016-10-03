@@ -344,12 +344,13 @@ if (SMPS_check == "y") {
 if (SMPS_check == "y") {
 
   # calculate MAC at 365 nm using baseline-corrected absorbance  
-  MAC <- (BrCcorr*2014286)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook, updated for 2016's values
+  MAC <- (BrCcorr*478723)/InterSMPS$y  # obscure number comes from unit and dilution correction (page 39) in HGW lab notebook, updated for 2016's values
   
   for (i in 2:(numFiles+1)) {
-    spectra_corr[,i] <- spectra_corr[,i]*2014286/InterSMPS$y[i]   # also convert the spectra from absorbance measurements to absorptivity
+    spectra_corr[,i] <- spectra_corr[,i]*478723/InterSMPS$y[i]   # also convert the spectra from absorbance measurements to absorptivity
   }
 }
+
 
 # only use this section for July 4th
 l <- dim(spectra_corr)[2]
@@ -738,6 +739,10 @@ if (log_log_plot == "yes"){
   }
   
 } # end of check for log/log plot
+
+df_txt <- data.frame(corr_times, MAC)
+write.csv(df_txt, file=file.path(path_prelim, paste(expt_date, "_CESAM", sep = ""), "MAC text file.csv"))
+
 
 
 
